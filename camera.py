@@ -1,46 +1,42 @@
-from camera import CameraHandler
-from vision import VisionProcessor
-from server import ServerComms
+import cv2
+import time
 
-def iniciar_maquina():
-    # 1. Inicializa os componentes
-    camara = CameraHandler(camera_id=0)
-    visao = VisionProcessor()
-    servidor = ServerComms(ip="127.0.0.1", port=8080)
-    
-    try:
-        # 2. Fica à espera que o operador abra o Visual Basic e carregue na aba "Automático"
-        servidor.aguardar_interface()
+class CameraHandler:
+    def __init__(self, camera_id=0):
+        """
+        Inicializa a ligação à câmara. 
+        O ID 0 é normalmente a webcam principal ou a primeira câmara USB ligada.
+        """
+        self.camera_id = camera_id
+        # Tenta ligar à câmara através do OpenCV
+        self.cap = cv2.VideoCapture(self.camera_id)
         
-        while True:
-            # 3. Fica à escuta do comando do Timer do Visual Basic
-            comando = servidor.aguardar_comando()
-            
-            if comando == "TESTAR":
-                # --- O CICLO DE INSPEÇÃO ---
-                
-                # Passo A: Tira a foto
-                frame = camara.capture_frame()
-                
-                if frame is not None:
-                    # Passo B: Analisa a luz/cor (CIE LAB)
-                    is_ok, frame_processado = visao.process_and_decide(frame)
-                    
-                    # Passo C: Envia o resultado (OK/NOK) e a foto de volta para o VB
-                    servidor.send_inspection_result(is_ok, frame_processado)
-                else:
-                    print("[Aviso] Falha ao capturar imagem da câmara.")
-            
-            elif comando is None:
-                print("Ligação ao Visual Basic perdida. A aguardar que volte a ligar...")
-                servidor.aguardar_interface()
+        # Verificação de segurança industrial vital: a câmara abriu mesmo?
+        if not self.cap.isOpened():
+            print(f"[Erro Câmara] Não foi possível aceder à câmara com ID {self.camera_id}. Verifique o cabo USB!")
+        else:
+            print(f"[Câmara] Sensor iniciado com sucesso (ID: {self.camera_id}).")
+            # Pequena pausa (1 seg) para dar tempo ao sensor de ajustar o brilho automático e focar
+            time.sleep(1)
 
-    except KeyboardInterrupt:
-        print("\nDesligar o sistema...")
-    finally:
-        # Garante que a câmara e a porta de rede são fechadas corretamente
-        camara.release()
-        servidor.fechar_servidor()
+    def capture_frame(self):
+        #Capta uma única fotografia (frame) e devolve-a.
+        
+        if not self.cap.isOpened():
+            return None
+            
+        # Tira a foto
+        ret, frame = self.cap.read()
+        
+        if not ret or frame is None:
+            print("[Erro Câmara] O sensor falhou ao capturar a imagem neste instante.")
+            return None
+            
+        return frame
 
-if __name__ == "__main__":
-    iniciar_maquina()
+    def release(self):
+        # Liberta a câmara para que outros programas a possam usar quando fecharmos o nosso.
+        
+        if self.cap.isOpened():
+            self.cap.release()
+            print("[Câmara] Desligada com segurança.")
