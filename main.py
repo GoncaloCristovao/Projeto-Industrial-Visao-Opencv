@@ -1,5 +1,4 @@
 import cv2
-# Aqui importamos as classes dos ficheiros que acabamos de criar!
 from camera import CameraHandler
 from vision import VisionProcessor
 from plc import PLCInterface
