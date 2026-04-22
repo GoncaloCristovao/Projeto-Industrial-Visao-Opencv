@@ -14,7 +14,7 @@ class VisionProcessor:
             self.imagem_padrao = None
             print("[Visão] Aviso: Nenhum padrão guardado no disco. Precisa de configurar um!")
 
-        # Parâmetros ajustáveis
+        # Parâmetros para testes e ajustes manuais....
         self.scale = 0.7
         self.threshold_value = 230
         self.half_thickness = 18
