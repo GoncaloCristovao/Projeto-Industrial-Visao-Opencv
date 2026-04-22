@@ -75,9 +75,7 @@ class VisionProcessor:
             return False, None, {"erro": "Frame inválido"}
 
         try:
-            # =========================
             # Preparação
-            # =========================
             img = frame.copy()
 
             if self.scale != 1.0:
@@ -98,9 +96,7 @@ class VisionProcessor:
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
             thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
 
-            # =========================
             # Deteção de linha
-            # =========================
             lines = cv2.HoughLinesP(
                 thresh,
                 1,
@@ -136,9 +132,7 @@ class VisionProcessor:
             line_img = img.copy()
             cv2.line(line_img, (x1, y1), (x2, y2), (0, 0, 255), 3)
 
-            # =========================
             # Retângulo alinhado
-            # =========================
             dx = x2 - x1
             dy = y2 - y1
             length = np.hypot(dx, dy)
@@ -161,9 +155,7 @@ class VisionProcessor:
 
             box = np.array([p1, p2, p3, p4], dtype=np.int32)
 
-            # =========================
             # Máscara e segmentação
-            # =========================
             mask = np.zeros_like(gray)
             cv2.fillConvexPoly(mask, box, 255)
 
@@ -172,9 +164,7 @@ class VisionProcessor:
             result = img.copy()
             cv2.polylines(result, [box], True, (0, 255, 0), 3)
 
-            # =========================
             # Divisão em zonas
-            # =========================
             divided_img = segmented.copy()
             num_parts = self.num_parts
             zonas_info = []
@@ -205,9 +195,7 @@ class VisionProcessor:
                 cv2.putText(divided_img, str(i + 1), (cx - 10, cy + 5),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1)
 
-            # =========================
             # Extração e análise das zonas
-            # =========================
             zones = []
 
             for i in range(num_parts):
@@ -253,9 +241,7 @@ class VisionProcessor:
                     "brilho_medio": round(brilho_medio, 2)
                 })
 
-            # =========================
             # Critério simples OK/NOK
-            # =========================
             brilhos = [z["brilho_medio"] for z in zonas_info if z["brilho_medio"] > 0]
 
             if len(brilhos) == 0:
@@ -268,9 +254,7 @@ class VisionProcessor:
                 # se alguma zona estiver muito abaixo da média => NOK
                 is_ok = brilho_min >= 0.7 * brilho_medio_global
 
-            # =========================
             # Frame final para HMI/debug
-            # =========================
             thresh_bgr = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
             mask_bgr = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
 
