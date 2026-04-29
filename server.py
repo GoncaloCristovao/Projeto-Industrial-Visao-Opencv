@@ -16,7 +16,7 @@ class ServerComms:
         self.server_socket.listen(5)  # Permite até 5 conexões pendentes
         
         self.clients = {}
-        self.on_command = None
+        self.on_command = None # Iniciar sem callback definido para garantir que não passa nada errado
 
         print(f"[Servidor TCP/IP] A escutar em {self.ip}:{self.port}...")
 
@@ -70,7 +70,7 @@ class ServerComms:
             conn = self.clients[destino]
 
             try:
-                # validação da imagem
+                # validação da imagem para evitar enviar imagens vazias em caso de erro na captura
                 if image_frame is None:
                     print("[Servidor] Frame inválido (AUTO)")
                     self.send_message("ERRO|FRAME_INVALIDO", destino)
@@ -99,7 +99,7 @@ class ServerComms:
             conn = self.clients[destino]
 
             try:
-                # 🔥 validação da imagem
+                # validação da imagem para evitar enviar imagens vazias em caso de erro na captura
                 if image_frame is None:
                     print("[Servidor] Frame inválido (MANUAL)")
                     self.send_message("ERRO|FRAME_INVALIDO", destino)
