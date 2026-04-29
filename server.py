@@ -16,6 +16,8 @@ class ServerComms:
         self.server_socket.listen(5)  # Permite até 5 conexões pendentes
         
         self.clients = {}
+        self.on_command = None
+
         print(f"[Servidor TCP/IP] A escutar em {self.ip}:{self.port}...")
 
     #aceitar clientes continuamente
@@ -68,6 +70,12 @@ class ServerComms:
             conn = self.clients[destino]
 
             try:
+                # validação da imagem
+                if image_frame is None:
+                    print("[Servidor] Frame inválido (AUTO)")
+                    self.send_message("ERRO|FRAME_INVALIDO", destino)
+                    return
+
                 ret, jpeg_buffer = cv2.imencode('.jpg', image_frame)
                 img_bytes = jpeg_buffer.tobytes()
                 tam = len(img_bytes)
@@ -91,6 +99,12 @@ class ServerComms:
             conn = self.clients[destino]
 
             try:
+                # 🔥 validação da imagem
+                if image_frame is None:
+                    print("[Servidor] Frame inválido (MANUAL)")
+                    self.send_message("ERRO|FRAME_INVALIDO", destino)
+                    return
+
                 ret, jpeg_buffer = cv2.imencode('.jpg', image_frame)
                 img_bytes = jpeg_buffer.tobytes()
                 tam = len(img_bytes)
