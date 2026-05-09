@@ -45,19 +45,28 @@ def iniciar_maquina():
                 servidor.send_message("ERRO|SEM_FOTO", cliente)
 
         # PADRAO
+       
         elif comando == "PADRAO":
+                # O VB agora envia "PADRAO|ID|NOME"
+            id_alvo = int(partes[1]) if len(partes) > 1 else 1
+            nome_alvo = partes[2] if len(partes) > 2 else f"Padrao_{id_alvo}"
+                
             frame = camara.capture_frame()
             if frame is not None:
-                visao.save_new_standard(frame)
-                servidor.send_message("PADRAO_OK", cliente)
-            else:
-                servidor.send_message("PADRAO_ERRO", cliente)
+                    # Chama a nova lógica de gravação da V2
+                    success, msg = visao.add_new_standard(frame, name=nome_alvo)
+                    if success:
+                        # Envia confirmação e o tamanho da imagem para o VB mostrar
+                        ret, jpeg_buffer = cv2.imencode('.jpg', frame)
+                        servidor.conn.sendall(f"PADRAO_OK|{len(jpeg_buffer.tobytes())}\n".encode('utf-8'))
+                    else:
+                        servidor.conn.sendall("PADRAO_ERRO\n".encode('utf-8'))
 
     # liga o servidor ao main
     servidor.on_command = tratar_comando
 
     try:
-        # 🔥 servidor corre numa thread separada
+        # servidor corre numa thread separada
         threading.Thread(target=servidor.iniciar_servidor, daemon=True).start()
 
         print("[Sistema] Servidor iniciado. À espera de clientes...")
