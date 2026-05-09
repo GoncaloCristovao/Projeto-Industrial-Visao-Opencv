@@ -159,8 +159,8 @@ class GuideCharacteristicDetector:
             # Calcula média de brilho em cada linha
             profile = np.mean(roi, axis=1)
         
-        # Suaviza o perfil para melhor detecção
-        profile = cv2.GaussianBlur(profile.astype(np.float32), ksize=5, sigmaX=1.0)
+        # Suaviza o perfil com uma média móvel (moving average) em vez do GaussianBlur do OpenCV
+        profile = np.convolve(profile, np.ones(5)/5.0, mode='same')
         
         return profile
     
