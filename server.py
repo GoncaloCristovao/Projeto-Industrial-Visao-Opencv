@@ -50,7 +50,7 @@ class ServerComms:
                 comando = data.decode('utf-8').strip()
                 print(f"[{tipo}] Comando recebido: {comando}")
 
-            # 🔥 chama o main
+            # chama o main
                 if self.on_command:
                     self.on_command(tipo, comando)
 
@@ -125,7 +125,7 @@ class ServerComms:
                 conn.close()
                 del self.clients[destino]
 
-    # 🔹 enviar mensagem simples
+    # enviar mensagem simples
     def send_message(self, mensagem, destino):
         if destino in self.clients:
             try:
@@ -133,7 +133,7 @@ class ServerComms:
             except:
                 print(f"[Servidor TCP/IP] Erro a enviar mensagem para {destino}")
 
-    # 🔹 fechar servidor
+    # fechar servidor
     def fechar_servidor(self):
         for conn in self.clients.values():
             conn.close()
