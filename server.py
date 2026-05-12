@@ -80,7 +80,7 @@ class ServerComms:
                 img_bytes = jpeg_buffer.tobytes()
                 tam = len(img_bytes)
 
-                cabecalho = f"AUTO|{estado}|{tam}"
+                cabecalho = f"AUTO|{estado}|{tam}\n"
                 conn.sendall(cabecalho.encode('utf-8'))
 
                 time.sleep(0.05)
