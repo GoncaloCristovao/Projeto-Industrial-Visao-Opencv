@@ -69,6 +69,37 @@ def iniciar_maquina():
             else:
                 servidor.send_message("ERRO|SEM_FOTO", cliente)
 
+        # PROCESSAR
+        elif comando == "PROCESSAR":
+            if foto_em_memoria is not None:
+                _, frame_proc, dados = visao.process_and_decide(foto_em_memoria)
+                id_padrao = dados.get("padrão_selecionado", {}).get("id", 1) if isinstance(dados.get("padrão_selecionado"), dict) else 1
+                zonas = dados.get("zonas", [])
+                
+                decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
+                is_ok_final = (decisao_plc == "OK")
+                servidor.send_manual_result(is_ok_final, dados, frame_proc, destino=cliente)
+            else:
+                servidor.send_message("ERRO|SEM_FOTO\n", cliente)
+
+        # =======================================================
+        # VERIFICAR SE O LUGAR ESTÁ OCUPADO (NOVO)
+        # =======================================================
+        elif comando.startswith("CHECK_PADRAO"):
+            try:
+                partes = comando.split("|")
+                id_check = int(partes[1])
+                
+                # Vai ao dicionário ver se o ID já existe
+                if id_check in visao.pattern_db.patterns:
+                    nome_atual = visao.pattern_db.patterns[id_check].name
+                    servidor.send_message(f"OCUPADO|{nome_atual}\n", cliente)
+                else:
+                    servidor.send_message("LIVRE\n", cliente)
+            except Exception as e:
+                print(f"[MAIN] Erro ao verificar padrão: {e}")
+                servidor.send_message("ERRO|CHECK_FALHOU\n", cliente)    
+
         # PADRAO - Definir novo padrão na BD
         # Comando esperado: "PADRAO|ID|NOME"
         # Exemplo: "PADRAO|1|Guia_BMW"
