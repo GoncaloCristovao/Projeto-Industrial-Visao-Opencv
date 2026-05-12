@@ -3,7 +3,7 @@ import os
 import numpy as np
 from typing import Dict, List, Optional, Tuple
 
-# Importa os teus novos módulos de inteligência V2
+# Importa os módulos de inteligência V2
 from pattern_manager import PatternDatabase, PatternMetadata
 from guide_detector import GuideCharacteristicDetector, GuideCharacteristics
 from pattern_matcher import SmartPatternMatcher, PatternComparisonEngine
@@ -11,8 +11,8 @@ from pattern_matcher import SmartPatternMatcher, PatternComparisonEngine
 
 class VisionProcessor:
     """
-    Processor de visão central:
-    Orquestra o sistema de múltiplos padrões e a análise matemática CIE.
+    Processor de visão central dinâmico:
+    Orquestra múltiplos padrões e análise de zonas variável (N segmentos).
     """
     
     def __init__(self, db_path: str = "pattern_database"):
@@ -21,22 +21,26 @@ class VisionProcessor:
         self.guide_detector = GuideCharacteristicDetector(px_to_mm_ratio=0.1)
         self.comparison_engine = PatternComparisonEngine()
         
-        # Parâmetros mecânicos e de limiar (Herdados da versão original)
+        # Parâmetros mecânicos base
         self.scale = 0.7
         self.threshold_value = 230
         self.half_thickness = 18
-        self.num_parts = 10
         
-        print("[Vision] Módulo de Visão (Multi-Padrões & CIExyY) inicializado.")
+        print("[Vision] Sistema Dinâmico (N-Segmentos) inicializado.")
     
     # =========================================================================
-    # GESTÃO DE PADRÕES (Chamado pelo main.py no comando "PADRAO")
+    # GESTÃO DE PADRÕES
     # =========================================================================
     def add_new_standard(self, frame: np.ndarray, name: str = None, notes: str = "") -> Tuple[bool, str]:
         if frame is None or frame.size == 0:
             return False, "Frame inválido"
         
+        # Deteta a estrutura
         characteristics = self.guide_detector.analyze_guide(frame)
+        
+        # Corta a peça em fatias e extrai as cores/luz!
+        _, _, dados_zonas = self._process_zone_segmentation(frame, characteristics)
+        perfil_das_zonas = dados_zonas.get("zonas", [])
         
         if name is None:
             guide_type = "Continua" if characteristics.is_continuous else f"Segmentada_{characteristics.num_segments}seg"
@@ -48,58 +52,74 @@ class VisionProcessor:
             is_continuous=characteristics.is_continuous,
             num_segments=characteristics.num_segments,
             segment_spacing_mm=characteristics.segment_spacing_mm,
-            notes=notes
+            notes=notes,
+            zone_profiles=perfil_das_zonas # Passa os valores para gravar na BD!
         )
         
         return success, message
 
     # =========================================================================
-    # PROCESSAMENTO E DECISÃO (Chamado pelo main.py no AUTO e PROCESSAR)
+    # PROCESSAMENTO E ORQUESTRAÇÃO
     # =========================================================================
     def process_and_decide(self, frame: np.ndarray) -> Tuple[bool, np.ndarray, Dict]:
         if frame is None:
             return False, None, {"erro": "Frame inválido"}
         
         try:
-            # 1. Deteta as características base (Contínua/Segmentada)
+            # 1. Deteta características físicas (Contínua/Segmentada e N de segmentos)
             guide_characteristics = self.guide_detector.analyze_guide(frame)
             
-            # 2. Faz a segmentação de zonas e os cálculos rigorosos CIE e de Brilho
-            is_ok_linhas, frame_proc, dados_zonas = self._process_zone_segmentation(frame)
+            # 2. Faz a segmentação DINÂMICA baseada nos dentes detetados ou no comprimento
+            sucesso_seg, frame_proc, dados_zonas = self._process_zone_segmentation(frame, guide_characteristics)
             
-            # 3. Se a BD estiver vazia, falha graciosamente
+            # 3. Se a BD estiver vazia, devolve os dados para a HMI mas sem padrão
             if len(self.pattern_db.patterns) == 0:
-                print("[Aviso] Nenhum padrão na base de dados!")
+                print("[Aviso] Base de Dados vazia!")
                 return False, frame_proc, dados_zonas
             
-            # 4. Motor Inteligente descobre qual dos 12 padrões usar
+            # 4. Motor Inteligente identifica qual o Padrão da BD corresponde a esta peça
             comparison_result = self.comparison_engine.compare_with_best_patterns(
                 dados_zonas,
                 guide_characteristics,
                 self.pattern_db.patterns
             )
             
-            # Decisão Final Inteligente (Substitui o critério rígido antigo)
-            is_ok = comparison_result["is_ok"]
-            
-            # Empacota TUDO no dicionário de dados
+            # Injetar os valores exatos do Padrão para o PLC!
+            id_selecionado = comparison_result.get("selected_pattern_id", 0)
+            if id_selecionado in self.pattern_db.patterns:
+                padrao_metadata = self.pattern_db.patterns[id_selecionado]
+                perfis_padrao = padrao_metadata.zone_profiles
+                
+                # Se o padrão tiver as zonas gravadas, substitui os valores provisórios 0.333
+                if perfis_padrao and len(perfis_padrao) == len(dados_zonas["zonas"]):
+                    for i, zona_atual in enumerate(dados_zonas["zonas"]):
+                        zona_padrao = perfis_padrao[i]
+                        zona_atual["xp_cie"] = zona_padrao.get("x_cie", 0.333)
+                        zona_atual["yp_cie"] = zona_padrao.get("y_cie", 0.333)
+                        zona_atual["lump_padrao"] = zona_padrao.get("brilho_medio", 200.0)
+
+            # Empacota os dados para o Main enviar ao PLC e à HMI
             dados_saida = {
-                "is_ok": is_ok,
                 "zonas": dados_zonas.get("zonas", []),
-                "padrão_selecionado": comparison_result.get("selected_pattern_name", "Desconhecido")
+                "padrão_selecionado": {
+                    "id": comparison_result.get("selected_pattern_id", 0),
+                    "nome": comparison_result.get("selected_pattern_name", "Desconhecido")
+                }
             }
             
-            return is_ok, frame_proc, dados_saida
+            # Nota: O is_ok interno do Python é calculado, mas o Main usará o do PLC
+            is_ok_python = comparison_result.get("is_ok", False)
+            
+            return is_ok_python, frame_proc, dados_saida
             
         except Exception as e:
             print(f"[Erro Processamento] {e}")
-            erro_img = frame.copy() if frame is not None else None
-            return False, erro_img, {"erro": str(e)}
+            return False, frame, {"erro": str(e)}
 
     # =========================================================================
-    # MATEMÁTICA INTERNA (Cortes, BGR -> XYZ -> xyY)
+    # MATEMÁTICA DE CORTE DINÂMICA (Apoia mais de 30 segmentos)
     # =========================================================================
-    def _process_zone_segmentation(self, frame: np.ndarray) -> Tuple[bool, np.ndarray, Dict]:
+    def _process_zone_segmentation(self, frame: np.ndarray, guide_chars: GuideCharacteristics) -> Tuple[bool, np.ndarray, Dict]:
         if frame is None:
             return False, None, {"zonas": []}
         
@@ -110,95 +130,77 @@ class VisionProcessor:
             
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             blur = cv2.GaussianBlur(gray, (5, 5), 0)
-            
             _, thresh = cv2.threshold(blur, self.threshold_value, 255, cv2.THRESH_BINARY)
-            kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
             
-            lines = cv2.HoughLinesP(thresh, 1, np.pi / 180, threshold=80, minLineLength=200, maxLineGap=30)
+            # Deteção de linha para alinhamento
+            lines = cv2.HoughLinesP(thresh, 1, np.pi/180, 80, minLineLength=200, maxLineGap=30)
+            if lines is None: return False, img, {"zonas": []}
             
-            if lines is None:
-                return False, img, {"zonas": []}
-            
-            best_line = None
-            best_length = 0
-            for line in lines:
-                x1, y1, x2, y2 = line[0]
-                length = np.hypot(x2 - x1, y2 - y1)
-                if length > best_length:
-                    best_length = length
-                    best_line = (x1, y1, x2, y2)
-            
+            best_line = max(lines, key=lambda l: np.hypot(l[0][2]-l[0][0], l[0][3]-l[0][1]))[0]
             x1, y1, x2, y2 = best_line
             dx, dy = x2 - x1, y2 - y1
             length = np.hypot(dx, dy)
-            if length == 0: return False, img, {"zonas": []}
-            
-            ux, uy = dx / length, dy / length
+            ux, uy = dx/length, dy/length
             px, py = -uy, ux
             
-            p1 = (int(x1 + px * self.half_thickness), int(y1 + py * self.half_thickness))
-            p2 = (int(x2 + px * self.half_thickness), int(y2 + py * self.half_thickness))
-            p3 = (int(x2 - px * self.half_thickness), int(y2 - py * self.half_thickness))
-            p4 = (int(x1 - px * self.half_thickness), int(y1 - py * self.half_thickness))
-            box = np.array([p1, p2, p3, p4], dtype=np.int32)
+            # Coordenadas do retângulo de inspeção
+            p1 = (int(x1 + px*self.half_thickness), int(y1 + py*self.half_thickness))
+            p2 = (int(x2 + px*self.half_thickness), int(y2 + py*self.half_thickness))
+            p3 = (int(x2 - px*self.half_thickness), int(y2 - py*self.half_thickness))
+            p4 = (int(x1 - px*self.half_thickness), int(y1 - py*self.half_thickness))
             
-            mask = np.zeros_like(gray)
-            cv2.fillConvexPoly(mask, box, 255)
-            segmented = cv2.bitwise_and(img, img, mask=mask)
+            # =================================================================
+            # LÓGICA DE FATIAMENTO ELÁSTICO (SOLUÇÃO PARA >30 SEGMENTOS)
+            # =================================================================
+            if guide_chars is not None and not guide_chars.is_continuous and guide_chars.num_segments > 0:
+                # Caso Segmentada: Usa o número real de dentes (ex: 35)
+                partes_dinamicas = guide_chars.num_segments
+            else:
+                # Caso Contínua: Divide o comprimento por fatias fixas (ex: a cada 30px)
+                # Isto evita que defeitos pequenos sejam "escondidos" por fatias grandes
+                comprimento_total = guide_chars.guide_length_px if guide_chars else length
+                tamanho_fatia_px = 30 
+                partes_dinamicas = max(4, int(comprimento_total // tamanho_fatia_px))
             
-            divided_img = segmented.copy()
             zonas_info = []
+            mask_total = np.zeros_like(gray)
             
-            # Análise Zona a Zona
-            for i in range(self.num_parts):
-                t1 = i / self.num_parts
-                t2 = (i + 1) / self.num_parts
+            # Ciclo de processamento zona a zona
+            for i in range(partes_dinamicas):
+                t1, t2 = i / partes_dinamicas, (i + 1) / partes_dinamicas
                 
-                top1 = (int((1 - t1) * p1[0] + t1 * p2[0]), int((1 - t1) * p1[1] + t1 * p2[1]))
-                top2 = (int((1 - t2) * p1[0] + t2 * p2[0]), int((1 - t2) * p1[1] + t2 * p2[1]))
-                bot2 = (int((1 - t2) * p4[0] + t2 * p3[0]), int((1 - t2) * p4[1] + t2 * p3[1]))
-                bot1 = (int((1 - t1) * p4[0] + t1 * p3[0]), int((1 - t1) * p4[1] + t1 * p3[1]))
+                # Interpolação para encontrar os 4 cantos de cada fatia
+                top1 = (int((1-t1)*p1[0] + t1*p2[0]), int((1-t1)*p1[1] + t1*p2[1]))
+                top2 = (int((1-t2)*p1[0] + t2*p2[0]), int((1-t2)*p1[1] + t2*p2[1]))
+                bot2 = (int((1-t2)*p4[0] + t2*p3[0]), int((1-t2)*p4[1] + t2*p3[1]))
+                bot1 = (int((1-t1)*p4[0] + t1*p3[0]), int((1-t1)*p4[1] + t1*p3[1]))
                 
                 zone_poly = np.array([top1, top2, bot2, bot1], dtype=np.int32)
                 zone_mask = np.zeros_like(gray)
                 cv2.fillConvexPoly(zone_mask, zone_poly, 255)
                 
-                # CÁLCULOS MATEMÁTICOS DE BRILHO
+                # Cálculos CIExyY
                 zona_gray = gray[zone_mask == 255]
-                brilho_medio = float(np.mean(zona_gray)) if zona_gray.size > 0 else 0.0
+                brilho = float(np.mean(zona_gray)) if zona_gray.size > 0 else 0.0
                 
-                # CÁLCULOS MATEMÁTICOS CIExyY (Cor)
-                x_cie, y_cie = 0.333, 0.333 # Valores brancos por defeito
-                
+                x_cie, y_cie = 0.333, 0.333
                 if zona_gray.size > 0:
-                    # Extrai BGR médio (apenas dentro da máscara, ignora o fundo preto)
                     mean_bgr = cv2.mean(img, mask=zone_mask)[:3]
-                    
-                    # Converte de BGR para XYZ via OpenCV
-                    pixel_bgr = np.uint8([[[mean_bgr[0], mean_bgr[1], mean_bgr[2]]]])
-                    pixel_xyz = cv2.cvtColor(pixel_bgr, cv2.COLOR_BGR2XYZ)[0][0]
-                    
-                    X_val = float(pixel_xyz[0])
-                    Y_cie_val = float(pixel_xyz[1])
-                    Z_val = float(pixel_xyz[2])
-                    
-                    soma = X_val + Y_cie_val + Z_val
+                    pixel_xyz = cv2.cvtColor(np.uint8([[mean_bgr]]), cv2.COLOR_BGR2XYZ)[0][0]
+                    soma = sum(pixel_xyz)
                     if soma > 0:
-                        x_cie = X_val / soma
-                        y_cie = Y_cie_val / soma
-                
+                        x_cie, y_cie = pixel_xyz[0]/soma, pixel_xyz[1]/soma
+
                 zonas_info.append({
                     "zona": i + 1,
-                    "brilho_medio": round(brilho_medio, 2),
-                    "x_cie": x_cie,
-                    "y_cie": y_cie,
-                    "xp_cie": 0.333,  # Tolerância provisória do padrão
-                    "yp_cie": 0.333,
-                    "lump_padrao": brilho_medio # Mantém igual provisoriamente até match completo 
+                    "brilho_medio": round(brilho, 2),
+                    "x_cie": x_cie, "y_cie": y_cie,
+                    "xp_cie": 0.333, "yp_cie": 0.333, "lump_padrao": 200.0
                 })
-            
-            # Frame Visual (Debug simplificado)
+                
+                # Visualização de debug
+                cv2.polylines(img, [zone_poly], True, (255, 0, 0), 1)
+
             return True, img, {"zonas": zonas_info}
             
         except Exception as e:

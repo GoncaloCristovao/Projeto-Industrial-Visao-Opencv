@@ -25,7 +25,7 @@ class PatternMetadata:
     color_profile: Dict[str, float]    # Perfil de cor (X, Y CIE médios)
     is_valid: bool                     # Se o padrão é válido
     notes: str                         # Notas adicionais
-
+    zone_profiles: List[Dict] = None
 
 class PatternDatabase:
     """Gestor de base de dados de padrões de guias de luz"""
@@ -78,7 +78,8 @@ class PatternDatabase:
                    is_continuous: bool,
                    num_segments: int = 0,
                    segment_spacing_mm: float = 0.0,
-                   notes: str = "") -> Tuple[bool, str, int]:
+                   notes: str = "",
+                   zone_profiles: List[Dict] = None) -> Tuple[bool, str, int]:
         """
         Adiciona um novo padrão à base de dados.
         
@@ -133,7 +134,8 @@ class PatternDatabase:
                 brightness_profile=brightness_profile,
                 color_profile=color_profile,
                 is_valid=True,
-                notes=notes
+                notes=notes,
+                zone_profiles=zone_profiles 
             )
             
             self.patterns[pattern_id] = metadata

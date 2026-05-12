@@ -3,6 +3,9 @@ import threading
 from camera import CameraHandler
 from vision import VisionProcessor
 from server import ServerComms
+from plc import PLCInterface
+
+plc = PLCInterface(ip_plc="192.168.1.100", porta_plc=5000)
 
 def iniciar_maquina():
     print("A iniciar módulos...")
@@ -26,8 +29,19 @@ def iniciar_maquina():
         elif comando == "AUTO":
             frame = camara.capture_frame()
             if frame is not None:
-                is_ok, frame_proc, dados = visao.process_and_decide(frame)
-                servidor.send_auto_result(is_ok, frame_proc, destino=cliente)
+                # 1. Visão lê os dados
+                _, frame_proc, dados = visao.process_and_decide(frame)
+                
+                # 2. Extrai corretamente os dados para o PLC
+                id_padrao = dados.get("padrão_selecionado", {}).get("id", 1) if isinstance(dados.get("padrão_selecionado"), dict) else 1
+                zonas = dados.get("zonas", [])
+                
+                # 3. Pede ao PLC para decidir E GRAVA A RESPOSTA
+                decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
+                is_ok_final = (decisao_plc == "OK")
+                
+                # 4. Envia a decisão DO PLC para a HMI
+                servidor.send_auto_result(is_ok_final, frame_proc, destino=cliente)
 
         # CAPTURAR
         elif comando == "CAPTURAR":
@@ -39,8 +53,19 @@ def iniciar_maquina():
         # PROCESSAR
         elif comando == "PROCESSAR":
             if foto_em_memoria is not None:
-                is_ok, frame_proc, dados = visao.process_and_decide(foto_em_memoria)
-                servidor.send_manual_result(is_ok, dados, frame_proc, destino=cliente)
+                # 1. Visão lê os dados da memória
+                _, frame_proc, dados = visao.process_and_decide(foto_em_memoria)
+                
+                # 2. Extrai corretamente os dados
+                id_padrao = dados.get("padrão_selecionado", {}).get("id", 1) if isinstance(dados.get("padrão_selecionado"), dict) else 1
+                zonas = dados.get("zonas", [])
+                
+                # 3. Pede ao PLC para decidir (Faltava isto!)
+                decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
+                is_ok_final = (decisao_plc == "OK")
+                
+                # 4. Envia a decisão do PLC e os dados para os gráficos da HMI
+                servidor.send_manual_result(is_ok_final, dados, frame_proc, destino=cliente)
             else:
                 servidor.send_message("ERRO|SEM_FOTO", cliente)
 

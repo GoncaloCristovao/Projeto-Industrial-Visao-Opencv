@@ -93,31 +93,41 @@ class ServerComms:
                 del self.clients[destino]
 
     def send_manual_result(self, is_ok, dados_cie, image_frame, destino="VB"):
-        """Envia o resultado detalhado, valores CIE e a foto para a Aba Manual."""
+        """Envia o resultado detalhado, valores CIE por segmento e a foto para a Aba Manual."""
         estado = "OK" if is_ok else "NOK"
         if destino in self.clients:
             conn = self.clients[destino]
 
             try:
-                # validação da imagem para evitar enviar imagens vazias em caso de erro na captura
                 if image_frame is None:
                     print("[Servidor] Frame inválido (MANUAL)")
-                    self.send_message("ERRO|FRAME_INVALIDO", destino)
+                    self.send_message("ERRO|FRAME_INVALIDO\n", destino)
                     return
 
                 ret, jpeg_buffer = cv2.imencode('.jpg', image_frame)
                 img_bytes = jpeg_buffer.tobytes()
                 tam = len(img_bytes)
 
-                val_x = dados_cie.get("X", 0)
-                val_y = dados_cie.get("Y", 0)
-                val_lum = dados_cie.get("Lum", 0)
+                # NOVO FORMATO DE ENVIO PARA O VB.NET (10 Segmentos)
+                zonas = dados_cie.get("zonas", [])
+                str_segmentos = ""
+                
+                for z in zonas:
+                    x = z.get("x_cie", 0.333)
+                    y = z.get("y_cie", 0.333)
+                    lum = z.get("brilho_medio", 0)
+                    xp = z.get("xp_cie", 0.333) 
+                    yp = z.get("yp_cie", 0.333)
+                    lump = z.get("lump_padrao", lum) 
+                    
+                    # Usa ponto para as decimais. Ex: |0.320;0.330;150.0;0.320;0.330;150.0
+                    str_segmentos += f"|{x:.4f};{y:.4f};{lum:.1f};{xp:.4f};{yp:.4f};{lump:.1f}"
 
-                cabecalho = f"MANUAL|{estado}|{val_x}|{val_y}|{val_lum}|{tam}"
+                # Cabeçalho final a enviar para a HMI: MANUAL|OK|ZONA1|ZONA2|...|TAMANHO \n
+                cabecalho = f"MANUAL|{estado}{str_segmentos}|{tam}\n"
                 conn.sendall(cabecalho.encode('utf-8'))
 
                 time.sleep(0.05)
-
                 conn.sendall(img_bytes)
 
             except Exception as e:
