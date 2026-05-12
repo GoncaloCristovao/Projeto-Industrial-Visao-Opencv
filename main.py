@@ -6,7 +6,7 @@ from vision import VisionProcessor
 from server import ServerComms
 from plc import PLCInterface
 
-plc = PLCInterface(ip_plc="192.168.1.100", porta_plc=5000)
+plc = PLCInterface(ip_plc="192.168.1.100", porta_plc=5000, modo_simulacao=True)
 
 def iniciar_maquina():
     print("A iniciar módulos...")
