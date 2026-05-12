@@ -139,6 +139,9 @@ class ServerComms:
     def send_message(self, mensagem, destino):
         if destino in self.clients:
             try:
+                # Adiciona sempre um \n no final se a mensagem ainda não o tiver
+                if not mensagem.endswith('\n'):
+                    mensagem += '\n'
                 self.clients[destino].sendall(mensagem.encode('utf-8'))
             except:
                 print(f"[Servidor TCP/IP] Erro a enviar mensagem para {destino}")
