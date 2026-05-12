@@ -1,5 +1,6 @@
 import cv2
 import threading
+import time
 from camera import CameraHandler
 from vision import VisionProcessor
 from server import ServerComms
@@ -166,9 +167,9 @@ def iniciar_maquina():
 
         print("[Sistema] Servidor iniciado. À espera de clientes...")
 
-        # loop principal vazio (mantém programa vivo)
+        # loop principal (mantém programa vivo sem queimar CPU)
         while True:
-            pass
+            time.sleep(1) 
 
     except KeyboardInterrupt:
         print("\nEncerrar sistema...")
