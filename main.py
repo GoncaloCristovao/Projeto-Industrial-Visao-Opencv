@@ -60,24 +60,11 @@ def iniciar_maquina():
                 id_padrao = dados.get("padrão_selecionado", {}).get("id", 1) if isinstance(dados.get("padrão_selecionado"), dict) else 1
                 zonas = dados.get("zonas", [])
                 
-                # 3. Pede ao PLC para decidir (Faltava isto!)
+                # 3. Pede ao PLC para decidir
                 decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
                 is_ok_final = (decisao_plc == "OK")
                 
                 # 4. Envia a decisão do PLC e os dados para os gráficos da HMI
-                servidor.send_manual_result(is_ok_final, dados, frame_proc, destino=cliente)
-            else:
-                servidor.send_message("ERRO|SEM_FOTO", cliente)
-
-        # PROCESSAR
-        elif comando == "PROCESSAR":
-            if foto_em_memoria is not None:
-                _, frame_proc, dados = visao.process_and_decide(foto_em_memoria)
-                id_padrao = dados.get("padrão_selecionado", {}).get("id", 1) if isinstance(dados.get("padrão_selecionado"), dict) else 1
-                zonas = dados.get("zonas", [])
-                
-                decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
-                is_ok_final = (decisao_plc == "OK")
                 servidor.send_manual_result(is_ok_final, dados, frame_proc, destino=cliente)
             else:
                 servidor.send_message("ERRO|SEM_FOTO\n", cliente)
