@@ -1,5 +1,6 @@
 import cv2
 import time
+import numpy as np
 from pathlib import Path
 
 class CameraHandler:
@@ -63,9 +64,12 @@ class CameraHandler:
         # Pequeno atraso para simular o tempo de foco/obturador de uma câmara real
         time.sleep(0.2) 
 
-        # Lê a imagem atual da lista
+        # Lê a imagem atual da lista com proteção contra acentos no Windows
         caminho_imagem = self.image_files[self.current_index]
-        frame = cv2.imread(str(caminho_imagem))
+        
+        # O Python lê os bytes, e o OpenCV descodifica a partir da memória
+        array_bytes = np.fromfile(str(caminho_imagem), dtype=np.uint8)
+        frame = cv2.imdecode(array_bytes, cv2.IMREAD_COLOR)
         
         if frame is not None:
             print(f"[Câmara VIRTUAL] 'CLICK!' Foto capturada: {caminho_imagem.name}")
