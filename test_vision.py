@@ -242,25 +242,29 @@ class TestVisionV2:
     
     def _gerar_guia_segmentada(self, num_segments=8, segment_spacing=40, 
                               width=400, height=80, ruido=False, com_defeito=False):
-        """Gera uma imagem de guia de luz segmentada"""
+        """Gera uma imagem de guia de luz segmentada (Simulação Realista)"""
         frame = np.zeros((height, width, 3), dtype=np.uint8)
         center_y = height // 2
         
-        # Desenha segmentos
+        # 1. Desenha o "Corpo" da guia (brilho 160)
+        # Isto é vital para o OpenCV entender que os dentes estão ligados numa única peça!
+        cv2.rectangle(frame, (20, center_y-5), (width-20, center_y+5), (160, 160, 160), -1)
+
+        # 2. Desenha os segmentos (dentes) brilhantes
         start_x = (width - (num_segments-1) * segment_spacing) // 2
         
         for i in range(num_segments):
             x = start_x + i * segment_spacing
             
-            # Se é defeito, deixa alguns segmentos mais fracos
-            brightness = 100 if (com_defeito and i % 2 == 0) else 220
+            # Se é defeito, deixa alguns segmentos mais escuros
+            brightness = 100 if (com_defeito and i % 2 == 0) else 255
             
-            # Desenha quadrado brilhante (segmento)
-            size = 15
-            cv2.rectangle(frame, (x-size, center_y-size), (x+size, center_y+size),
+            # Desenha o dente brilhante
+            size = 6 # Dentes mais finos para os "vales" matemáticos ficarem evidentes
+            cv2.rectangle(frame, (x-size, center_y-15), (x+size, center_y+15),
                          (brightness, brightness, brightness), -1)
         
-        # Adiciona ruído se pedido
+        # Adiciona ruído se pedido para testar a robustez
         if ruido:
             noise = np.random.normal(0, 10, frame.shape).astype(np.uint8)
             frame = cv2.add(frame, noise)
