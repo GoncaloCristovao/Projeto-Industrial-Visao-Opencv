@@ -34,9 +34,9 @@ class GuideCharacteristicDetector:
                           (ajustar conforme calibração da câmara)
         """
         self.px_to_mm_ratio = px_to_mm_ratio
-        self.segment_min_brightness = 200    # Threshold para detecção de segmento
-        self.peak_prominence_threshold = 30  # Proeminência mínima de pico
-        self.min_peak_distance = 10          # Distância mínima entre picos em px
+        self.segment_min_brightness = 120    
+        self.peak_prominence_threshold = 30  
+        self.min_peak_distance = 10
     
     def analyze_guide(self, frame: np.ndarray) -> GuideCharacteristics:
         """
@@ -147,19 +147,17 @@ class GuideCharacteristicDetector:
     
     def _extract_intensity_profile(self, roi: np.ndarray, direction: str) -> np.ndarray:
         """
-        Extrai perfil de intensidade (brilho médio) ao longo da guia.
-        
-        Para guia horizontal: média de cada coluna
-        Para guia vertical: média de cada linha
+        Extrai perfil de intensidade ao longo da guia.
+        Usa o valor MÁXIMO da coluna/linha para não diluir o brilho
+        com o fundo escuro em redor da peça.
         """
         if direction == "horizontal":
-            # Calcula média de brilho em cada coluna
-            profile = np.mean(roi, axis=0)
+            # Mudámos np.mean para np.max!
+            profile = np.max(roi, axis=0)
         else:
-            # Calcula média de brilho em cada linha
-            profile = np.mean(roi, axis=1)
+            profile = np.max(roi, axis=1)
         
-        # Suaviza o perfil com uma média móvel (moving average) em vez do GaussianBlur do OpenCV
+        # Suaviza o perfil com uma média móvel
         profile = np.convolve(profile, np.ones(5)/5.0, mode='same')
         
         return profile
