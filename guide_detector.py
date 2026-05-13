@@ -34,7 +34,7 @@ class GuideCharacteristicDetector:
                           (ajustar conforme calibração da câmara)
         """
         self.px_to_mm_ratio = px_to_mm_ratio
-        self.segment_min_brightness = 120    
+        self.segment_min_brightness = 180    
         self.peak_prominence_threshold = 30  
         self.min_peak_distance = 10
     
@@ -110,7 +110,7 @@ class GuideCharacteristicDetector:
         h, w = gray.shape[:2]
         
         # Aplica threshold para encontrar as regiões brilhantes
-        _, thresh = cv2.threshold(gray, 150, 255, cv2.THRESH_BINARY)
+        _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
         
         # Morphology para limpar a imagem
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
