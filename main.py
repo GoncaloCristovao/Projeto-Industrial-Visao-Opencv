@@ -12,7 +12,7 @@ def iniciar_maquina():
     print("A iniciar módulos...")
     camara = CameraHandler(camera_id=0)
     visao = VisionProcessor()
-    servidor = ServerComms(ip="127.0.0.1", port=8080)
+    servidor = ServerComms(ip="0.0.0.0", port=8080)
 
     foto_em_memoria = None
 
