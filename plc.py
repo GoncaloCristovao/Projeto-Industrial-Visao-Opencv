@@ -1,7 +1,7 @@
 import socket
 
 class PLCInterface:
-    def __init__(self, ip_plc="192.168.54.251", porta_plc=5000):
+    def __init__(self, ip_plc="172.20.10.2", porta_plc=5000):
         self.ip = ip_plc
         self.port = porta_plc
         self.testar_conexao() # Faz o teste logo ao arrancar!
