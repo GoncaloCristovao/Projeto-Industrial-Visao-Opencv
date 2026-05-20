@@ -46,7 +46,7 @@ def iniciar_maquina():
                 is_ok_final = (decisao_plc == "OK")
                 
                 # ==========================================
-                # 📝 GUARDAR DADOS DO MODO AUTOMÁTICO
+                #  GUARDAR DADOS DO MODO AUTOMÁTICO
                 # ==========================================
                 txt_info = f"--- RESULTADO DA INSPEÇÃO (MODO AUTO) ---\n"
                 txt_info += f"Data/Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
@@ -77,31 +77,40 @@ def iniciar_maquina():
         elif cmd_limpo == "PROCESSAR":
             if foto_em_memoria is not None:
                 _, frame_proc, dados = visao.process_and_decide(foto_em_memoria)
-                id_padrao = dados.get("padrão_selecionado", {}).get("id", 1) if isinstance(dados.get("padrão_selecionado"), dict) else 1
+                
+                # Extrai o ID e o Nome com segurança
+                id_padrao = dados.get("padrão_selecionado", {}).get("id", 0) if isinstance(dados.get("padrão_selecionado"), dict) else 0
                 nome_padrao = dados.get("padrão_selecionado", {}).get("nome", "Desconhecido") if isinstance(dados.get("padrão_selecionado"), dict) else "Desconhecido"
-                zonas = dados.get("zonas", [])
                 
-                decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
-                is_ok_final = (decisao_plc == "OK")
+                # === NOVA LÓGICA DE BLOQUEIO ===
+                if id_padrao == 0 or nome_padrao == "Desconhecido":
+                    # Se não reconheceu, aborta e avisa a HMI!
+                    servidor.send_message("ERRO|DESCONHECIDO\n", cliente)
+                else:
+                    # Se reconheceu, segue o fluxo normal
+                    zonas = dados.get("zonas", [])
+                    
+                    decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
+                    is_ok_final = (decisao_plc == "OK")
 
-                # ==========================================
-                #  GUARDAR DADOS DO MODO PROCESSAR (MANUAL)
-                # ==========================================
-                txt_info = f"--- RESULTADO DA INSPEÇÃO (MODO MANUAL) ---\n"
-                txt_info += f"Data/Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
-                txt_info += f"Decisão PLC: {decisao_plc}\n"
-                txt_info += f"Padrão Analisado: {nome_padrao} (ID: {id_padrao})\n\n"
-                txt_info += "--- VALORES POR ZONA ---\n"
-                for z in zonas:
-                    txt_info += f"Zona {z.get('zona', '?')}: Brilho={z.get('brilho_medio', 0):.1f} | X_CIE={z.get('x_cie', 0):.4f} | Y_CIE={z.get('y_cie', 0):.4f}\n"
+                    # ==========================================
+                    #  GUARDAR DADOS DO MODO PROCESSAR (MANUAL)
+                    # ==========================================
+                    txt_info = f"--- RESULTADO DA INSPEÇÃO (MODO MANUAL) ---\n"
+                    txt_info += f"Data/Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    txt_info += f"Decisão PLC: {decisao_plc}\n"
+                    txt_info += f"Padrão Analisado: {nome_padrao} (ID: {id_padrao})\n\n"
+                    txt_info += "--- VALORES POR ZONA ---\n"
+                    for z in zonas:
+                        txt_info += f"Zona {z.get('zona', '?')}: Brilho={z.get('brilho_medio', 0):.1f} | X_CIE={z.get('x_cie', 0):.4f} | Y_CIE={z.get('y_cie', 0):.4f}\n"
 
-                ret1, jpeg_raw = cv2.imencode('.jpg', foto_em_memoria)
-                ret2, jpeg_proc = cv2.imencode('.jpg', frame_proc)
-                if ret1 and ret2:
-                    guardar(guia=nome_padrao, tipo="t", img_data=jpeg_raw.tobytes(), txt_data=txt_info, img_res_data=jpeg_proc.tobytes())
-                # ==========================================
-                
-                servidor.send_manual_result(is_ok_final, dados, frame_proc, destino=cliente)
+                    ret1, jpeg_raw = cv2.imencode('.jpg', foto_em_memoria)
+                    ret2, jpeg_proc = cv2.imencode('.jpg', frame_proc)
+                    if ret1 and ret2:
+                        guardar(guia=nome_padrao, tipo="t", img_data=jpeg_raw.tobytes(), txt_data=txt_info, img_res_data=jpeg_proc.tobytes())
+                    # ==========================================
+                    
+                    servidor.send_manual_result(is_ok_final, dados, frame_proc, destino=cliente)
             else:
                 servidor.send_message("ERRO|SEM_FOTO\n", cliente)
 
