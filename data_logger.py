@@ -7,7 +7,7 @@ def guardar(guia, tipo, img_data, txt_data, img_res_data=None):
     Guarda ficheiros de imagem (.jpg) e texto (.txt) com numeração automática.
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    pasta_guia = os.path.join(base_dir, "Registos", guia) # Criei uma subpasta "Registos" para não misturar com o código
+    pasta_guia = os.path.join(base_dir, "Registos", guia)
     
     # 1. Verificar/Criar pasta
     if tipo == "p":
