@@ -7,45 +7,61 @@ class ServerComms:
     def __init__(self, ip="0.0.0.0", port=8080):
         self.ip = ip
         self.port = port
+
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Permite reutilizar a porta imediatamente se reiniciar o programa
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
         self.server_socket.bind((self.ip, self.port))
-        self.server_socket.listen(5)
+        self.server_socket.listen(5)  # Permite até 5 conexões pendentes
+        
         self.clients = {}
-        self.on_command = None 
+        self.on_command = None # Iniciar sem callback definido para garantir que não passa nada errado
+
         print(f"[Servidor TCP/IP] A escutar em {self.ip}:{self.port}...")
 
+    #aceitar clientes continuamente
     def iniciar_servidor(self):
+        print("[Servidor TCP/IP] A aguardar clientes...")
         while True:
             conn, addr = self.server_socket.accept()
+            print(f"[Servidor TCP/IP] Cliente ligado: {addr}...")
+            
             threading.Thread(target=self.registar_cliente, args=(conn, addr)).start()
 
     def registar_cliente(self, conn, addr):
         try:
-            # Recebe o ID do cliente (ex: "Interface HMI")
-            tipo = conn.recv(1024).decode('utf-8').strip()
-            print(f"[Servidor] Cliente ligado: {tipo}")
+            tipo = conn.recv(1024).decode('utf-8').strip()  # Espera receber o tipo do cliente (ex: "VB")
+            print(f"[Servidor TCP/IP] Cliente identificado como: {tipo}")
+
             self.clients[tipo] = conn
+
             self.lidar_cliente(conn, tipo)
         except Exception as e:
-            print(f"[Servidor] Erro de registo: {e}")
+            print(f"[Servidor TCP/IP] Erro ao registar cliente: {e}")
 
     def lidar_cliente(self, conn, tipo):
         while True:
             try:
                 data = conn.recv(1024)
-                if not data: break
-                
-                comando = data.decode('utf-8').strip()
-                print(f"[{tipo}] Comando recebido: '{comando}'")
+                if not data:
+                    break
 
+                comando = data.decode('utf-8').strip()
+                print(f"[{tipo}] Comando recebido: {comando}")
+
+            # chama o main
                 if self.on_command:
                     self.on_command(tipo, comando)
+
             except Exception as e:
-                print(f"[Servidor] Erro com {tipo}: {e}")
+                print(f"[Servidor TCP/IP] Erro com {tipo}: {e}")
                 break
+
+        print(f"[Servidor TCP/IP] Cliente {tipo} desligado")
         conn.close()
-        if tipo in self.clients: del self.clients[tipo]
+        if tipo in self.clients:
+            del self.clients[tipo]
 
     def send_auto_result(self, is_ok, image_frame, destino="VB"):
         """Envia o resultado simplificado e a foto para a Aba Automático."""
