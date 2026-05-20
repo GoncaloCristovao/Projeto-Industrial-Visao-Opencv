@@ -7,6 +7,7 @@ from server import ServerComms
 from plc import PLCInterface
 from data_logger import guardar
 from datetime import datetime
+from upload_server import UploadServer
 
 plc = PLCInterface(ip_plc="172.20.10.2", porta_plc=5000)
 
@@ -15,6 +16,7 @@ def iniciar_maquina():
     camara = CameraHandler(camera_id=0)
     visao = VisionProcessor()
     servidor = ServerComms(ip="0.0.0.0", port=8080)
+    upload_server = UploadServer(ip="0.0.0.0", port=8081)
 
     foto_em_memoria = None
 
@@ -35,7 +37,10 @@ def iniciar_maquina():
             servidor.send_message("PONG\n", cliente)
 
         elif cmd_limpo == "AUTO":
-            frame = camara.capture_frame()
+            if upload_server.ultima_imagem_peca is not None:
+                frame = cv2.imread(upload_server.ultima_imagem_peca)
+            else:
+                frame = camara.capture_frame()
             if frame is not None:
                 _, frame_proc, dados = visao.process_and_decide(frame)
                 id_padrao = dados.get("padrão_selecionado", {}).get("id", 1) if isinstance(dados.get("padrão_selecionado"), dict) else 1
@@ -67,7 +72,11 @@ def iniciar_maquina():
                 servidor.send_message("ERRO|SEM_IMAGEM\n", cliente)
 
         elif cmd_limpo == "CAPTURAR":
-            frame = camara.capture_frame()
+            if upload_server.ultima_imagem_peca is not None:
+                frame = cv2.imread(upload_server.ultima_imagem_peca)
+            else:
+                frame = camara.capture_frame()
+
             if frame is not None:
                 foto_em_memoria = frame
                 servidor.send_auto_result(True, frame, destino=cliente)
@@ -132,11 +141,15 @@ def iniciar_maquina():
                 id_alvo = int(partes[1])
                 nome_alvo = partes[2]
                 
-                frame = camara.capture_frame()
+                if upload_server.ultima_imagem_padrao is not None:
+                    frame = cv2.imread(upload_server.ultima_imagem_padrao)
+                else:
+                    frame = camara.capture_frame()
+
                 if frame is None:
                     servidor.send_message("ERRO|CAMERA_FALHOU\n", cliente)
                     return
-                
+                                
                 # 1. Extraímos as zonas diretamente aqui usando as funções que o visao já tem
                 characteristics = visao.guide_detector.analyze_guide(frame)
                 _, _, dados_zonas = visao._process_zone_segmentation(frame, characteristics)
@@ -182,7 +195,10 @@ def iniciar_maquina():
 
     try:
         threading.Thread(target=servidor.iniciar_servidor, daemon=True).start()
+        threading.Thread(target=upload_server.iniciar, daemon=True).start()
         print("[Sistema] Servidor iniciado. À espera de clientes...")
+        print("[Sistema] Servidor de upload iniciado na porta 8081.")
+        
         while True:
             time.sleep(1) 
     except KeyboardInterrupt:
