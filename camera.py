@@ -1,6 +1,7 @@
 import cv2
 import time
 import os
+import numpy as np
 from pathlib import Path
 from typing import List
 
@@ -111,7 +112,7 @@ class CameraHandler:
         
         # Carrega imagem atual
         img_path = self.test_images[self.current_image_index]
-        frame = cv2.imread(str(img_path))
+        frame = cv2.imdecode(np.fromfile(str(img_path), dtype=np.uint8), cv2.IMREAD_COLOR)        
         
         if frame is None:
             print(f"[Câmara]  Erro ao carregar '{img_path.name}'")
