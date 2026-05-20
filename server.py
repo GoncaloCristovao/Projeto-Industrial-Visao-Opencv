@@ -41,21 +41,22 @@ class ServerComms:
             print(f"[Servidor TCP/IP] Erro ao registar cliente: {e}")
 
     def lidar_cliente(self, conn, tipo):
+        print(f"[DEBUG] A iniciar leitura de comandos para {tipo}...") # Adiciona isto
         while True:
             try:
                 data = conn.recv(1024)
                 if not data:
+                    print("[DEBUG] Ligação fechada pelo cliente.") # Adiciona isto
                     break
 
                 comando = data.decode('utf-8').strip()
-                print(f"[{tipo}] Comando recebido: {comando}")
+                print(f"[{tipo}] Comando recebido: {comando}") # ISTO é o que tem de aparecer!
 
-            # chama o main
                 if self.on_command:
                     self.on_command(tipo, comando)
 
             except Exception as e:
-                print(f"[Servidor TCP/IP] Erro com {tipo}: {e}")
+                print(f"[Servidor TCP/IP] Erro crítico com {tipo}: {e}") # Adiciona isto para ver o erro
                 break
 
         print(f"[Servidor TCP/IP] Cliente {tipo} desligado")
