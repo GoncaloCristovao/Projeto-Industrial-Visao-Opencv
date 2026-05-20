@@ -1,4 +1,5 @@
 import cv2
+import os
 import threading
 import time
 from camera import CameraHandler
@@ -8,13 +9,22 @@ from plc import PLCInterface
 from data_logger import guardar
 from datetime import datetime
 
+print(f"Diretório de trabalho atual: {os.getcwd()}")
+
 # Instanciação limpa do módulo PLC (os parâmetros antigos de IP/Porta saíram)
 plc = PLCInterface()
 
 def iniciar_maquina():
     print("A iniciar módulos internos...")
     camara = CameraHandler(camera_id=0)
-    visao = VisionProcessor()
+
+    # Define o diretório base como sendo o local onde este main.py está guardado
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    # Constrói o caminho completo para a pasta pattern_database
+    db_path = os.path.join(base_dir, "pattern_database")
+    
+    # Passa o caminho absoluto para o VisionProcessor
+    visao = VisionProcessor(db_path=db_path)
     
     # Inicia o servidor na porta 5000 para receber a conexão do VB.NET
     servidor = ServerComms(ip="0.0.0.0", port=5000)
