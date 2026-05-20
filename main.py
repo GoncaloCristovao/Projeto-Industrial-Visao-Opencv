@@ -165,10 +165,12 @@ def iniciar_maquina():
                         time.sleep(0.05)
                         servidor.clients[cliente].sendall(jpeg_buffer.tobytes())
                     else:
-                        servidor.send_message("ERRO|ENCODE_JPEG_FALHOU\n", cliente)
+                        print(f"[ERRO DEBUG] Visão falhou: {msg}") # Adiciona este print
+                        servidor.send_message(f"ERRO|{msg}\n", cliente)
                 else:
                     servidor.send_message(f"ERRO|{msg}\n", cliente)
             except Exception as e:
+                print(f"[ERRO DEBUG] Exceção não tratada: {str(e)}") # Adiciona este print
                 servidor.send_message(f"ERRO|{str(e)}\n", cliente)
 
     servidor.on_command = tratar_comando
