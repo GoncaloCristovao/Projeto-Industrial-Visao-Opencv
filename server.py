@@ -137,6 +137,22 @@ class ServerComms:
                 conn.close()
                 del self.clients[destino]
 
+    def send_image_only(self, image_frame, tag="CAPTURAR", destino="VB"):
+        if destino in self.clients:
+            conn = self.clients[destino]
+            try:
+                ret, jpeg_buffer = cv2.imencode('.jpg', image_frame)
+                img_bytes = jpeg_buffer.tobytes()
+                tam = len(img_bytes)
+                
+                # Envia cabeçalho claro para a HMI
+                cabecalho = f"{tag}|OK|{tam}\n"
+                conn.sendall(cabecalho.encode('utf-8'))
+                time.sleep(0.05)
+                conn.sendall(img_bytes)
+            except Exception as e:
+                print(f"[Servidor] Erro envio imagem: {e}")
+
     # enviar mensagem simples
     def send_message(self, mensagem, destino):
         if destino in self.clients:

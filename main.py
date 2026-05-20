@@ -70,7 +70,8 @@ def iniciar_maquina():
             frame = camara.capture_frame()
             if frame is not None:
                 foto_em_memoria = frame
-                servidor.send_auto_result(True, frame, destino=cliente)
+                # Usa a nova função que envia apenas a imagem com o tag correto
+                servidor.send_image_only(frame, tag="CAPTURAR", destino=cliente)
             else:
                 servidor.send_message("ERRO|SEM_IMAGEM\n", cliente)
 
