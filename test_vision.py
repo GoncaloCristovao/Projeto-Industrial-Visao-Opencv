@@ -29,35 +29,28 @@ class TestVisionV2:
         self.detector = GuideCharacteristicDetector(px_to_mm_ratio=0.1)
     
     def test_1_criar_padroes_sinteticos(self):
-        """TESTE 1: Cria padrões sintéticos para teste"""
         print("\n" + "="*70)
-        print("TESTE 1: Criar Padrões Sintéticos")
+        print("TESTE 1: Criar Padrões Sintéticos (Corrigido)")
         print("="*70)
         
-        # Padrão 1: Guia Contínua
-        print("\n[1.1] Criando padrão contínuo...")
-        frame_continuo = self._gerar_guia_continua(width=400, height=80, brightness=220)
-        success, msg = self.vision.add_new_standard(
-            frame_continuo,
-            name="Guia_Continua_Standard",
-            notes="Guia com luz contínua uniforme"
-        )
-        print(f"  Resultado: {'✓' if success else '✗'} {msg}")
+        # Lista de testes para automatizar
+        testes = [
+            ("Guia_Continua_Standard", self._gerar_guia_continua(400, 80, 220), "Guia contínua"),
+            ("Guia_Segmentada_8seg", self._gerar_guia_segmentada(8, 40, 400, 80), "8 segmentos"),
+            ("Guia_Segmentada_10seg", self._gerar_guia_segmentada(10, 35, 400, 80), "10 segmentos")
+        ]
         
-        # Padrão 2: Guia Segmentada 8 segmentos
-        print("\n[1.2] Criando padrão segmentado 8 segmentos...")
-        frame_seg8 = self._gerar_guia_segmentada(
-            num_segments=8,
-            segment_spacing=40,
-            width=400,
-            height=80
-        )
-        success, msg = self.vision.add_new_standard(
-            frame_seg8,
-            name="Guia_Segmentada_8seg",
-            notes="Guia com 8 segmentos espaçados 40px"
-        )
-        print(f"  Resultado: {'✓' if success else '✗'} {msg}")
+        for nome, frame, desc in testes:
+            print(f"\n[Processando] {nome}...")
+            
+            # Forçamos a análise antes de guardar para validar
+            chars = self.vision.guide_detector.analyze_guide(frame)
+            if chars.num_segments == 0 and not chars.is_continuous:
+                print(f"  ✗ Erro: Detector não encontrou a guia no frame sintético.")
+                continue
+                
+            success, msg = self.vision.add_new_standard(frame, name=nome, notes=desc)
+            print(f"  Resultado: {'✓' if success else '✗'} {msg}")
         
         # Padrão 3: Guia Segmentada 10 segmentos
         print("\n[1.3] Criando padrão segmentado 10 segmentos...")
