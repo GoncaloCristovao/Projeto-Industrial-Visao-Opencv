@@ -73,14 +73,16 @@ class ServerComms:
                 # validação da imagem para evitar enviar imagens vazias em caso de erro na captura
                 if image_frame is None:
                     print("[Servidor] Frame inválido (AUTO)")
-                    self.send_message("ERRO|FRAME_INVALIDO", destino)
+                    # CORREÇÃO 1: Faltava o \n aqui também!
+                    self.send_message("ERRO|FRAME_INVALIDO\n", destino) 
                     return
 
                 ret, jpeg_buffer = cv2.imencode('.jpg', image_frame)
                 img_bytes = jpeg_buffer.tobytes()
                 tam = len(img_bytes)
 
-                cabecalho = f"AUTO|{estado}|{tam}"
+                # CORREÇÃO 2: AQUI ESTÁ O BUG PRINCIPAL! Adicionar o \n no final da string
+                cabecalho = f"AUTO|{estado}|{tam}\n" 
                 conn.sendall(cabecalho.encode('utf-8'))
 
                 time.sleep(0.05)
