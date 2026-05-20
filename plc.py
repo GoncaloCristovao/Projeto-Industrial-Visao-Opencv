@@ -1,68 +1,33 @@
 import socket
 
-
 class PLCInterface:
-    def __init__(self, ip_plc="172.20.10.2", porta_plc=5000):
-        self.ip = ip_plc
-        self.port = porta_plc
-        self.sock = None
-
-        # Liga logo ao arrancar
-        self.ligar()
-
-    def ligar(self):
+    def __init__(self, servidor_comms=None):
         """
-        Estabelece uma ligação persistente ao PLC.
-        Se já existir ligação válida, não faz nada.
+        Agora o PLC é um cliente ligado ao nosso próprio servidor.
+        Mantemos uma referência ao objeto de comunicação do servidor.
         """
-        if self.sock is not None:
-            return True
-
-        print(f"[PLC] A ligar ao PLC em {self.ip}:{self.port}...")
-
-        try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.settimeout(5.0)
-            self.sock.connect((self.ip, self.port))
-
-            print("[PLC] Ligação persistente estabelecida com sucesso.")
-            return True
-
-        except Exception as e:
-            print(f"[Erro PLC] Não foi possível ligar ao PLC: {e}")
-            self.sock = None
-            return False
-
-    def desligar(self):
-        """
-        Fecha a ligação persistente ao PLC.
-        """
-        if self.sock is not None:
-            try:
-                self.sock.close()
-                print("[PLC] Ligação ao PLC encerrada.")
-            except Exception as e:
-                print(f"[Erro PLC] Erro ao fechar ligação: {e}")
-            finally:
-                self.sock = None
+        self.servidor = servidor_comms
 
     def garantir_ligacao(self):
         """
-        Garante que existe ligação ao PLC.
-        Se a socket tiver caído, tenta voltar a ligar.
+        Verifica se o cliente com identificação 'PLC' está conectado ao servidor.
         """
-        if self.sock is None:
-            return self.ligar()
-        return True
+        if self.servidor is None:
+            return False
+        return "PLC" in self.servidor.clients
 
     def avaliar_peca_no_plc(self, id_padrao, zonas):
         """
-        Envia os dados da peça ao PLC através da ligação persistente
-        e devolve a decisão final.
+        Envia os dados da peça ao PLC através da ligação TCP ativa no servidor
+        e aguarda imediatamente a decisão final (OK ou NOK).
         """
         try:
             if not self.garantir_ligacao():
+                print("[Erro PLC] O cliente 'PLC' não se encontra conectado ao servidor.")
                 return "NOK"
+
+            # Obtém a socket do cliente PLC ativo no servidor
+            sock = self.servidor.clients["PLC"]
 
             str_segmentos = ""
             for z in zonas:
@@ -77,23 +42,27 @@ class PLCInterface:
 
             mensagem = f"AVALIAR|{id_padrao}{str_segmentos}"
 
-            # envia pedido
-            self.sock.sendall(mensagem.encode("utf-8"))
+            print(f"[PLC] A enviar dados para avaliação...")
+            # Envia o pedido de avaliação para o VB.NET
+            sock.sendall(mensagem.encode("utf-8"))
 
-            # recebe resposta
-            resposta = self.sock.recv(1024).decode("utf-8").strip()
+            # Bloqueia temporariamente à espera da resposta direta (OK ou NOK)
+            resposta = sock.recv(1024).decode("utf-8").strip()
 
             if not resposta:
-                print("[Erro PLC] Resposta vazia do PLC.")
-                self.desligar()
+                print("[Erro PLC] Resposta vazia ou desconexão do PLC durante a avaliação.")
                 return "NOK"
 
             print(f"[PLC] O PLC decidiu: {resposta}")
             return resposta
 
         except Exception as e:
-            print(f"[Erro PLC] Falha ao comunicar com o PLC: {e}")
-
-            # Se houver erro, fecha a socket para forçar reconnect na próxima tentativa
-            self.desligar()
+            print(f"[Erro PLC] Falha crítica ao comunicar com o PLC: {e}")
             return "NOK"
+
+    def desligar(self):
+        """
+        Mantido apenas por compatibilidade com a Main. 
+        A desconexão real agora é tratada pelo encerramento do servidor.
+        """
+        print("[PLC] O fecho da ligação agora é gerido pelo servidor principal.")

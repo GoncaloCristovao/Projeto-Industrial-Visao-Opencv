@@ -4,7 +4,7 @@ import cv2
 import time
 
 class ServerComms:
-    def __init__(self, ip="0.0.0.0", port=8080):
+    def __init__(self, ip="0.0.0.0", port=5000):
         self.ip = ip
         self.port = port
 
@@ -16,29 +16,29 @@ class ServerComms:
         self.server_socket.listen(5)  # Permite até 5 conexões pendentes
         
         self.clients = {}
-        self.on_command = None # Iniciar sem callback definido para garantir que não passa nada errado
+        self.on_command = None # Iniciar sem callback definido para garantir integridade
 
-        print(f"[Servidor TCP/IP] A escutar em {self.ip}:{self.port}...")
+        print(f"[Servidor TCP/IP] À escuta em {self.ip}:{self.port}...")
 
-    #aceitar clientes continuamente
     def iniciar_servidor(self):
         print("[Servidor TCP/IP] A aguardar clientes...")
         while True:
             conn, addr = self.server_socket.accept()
-            print(f"[Servidor TCP/IP] Cliente ligado: {addr}...")
+            print(f"[Servidor TCP/IP] Nova conexão estabelecida a partir de: {addr}")
             
             threading.Thread(target=self.registar_cliente, args=(conn, addr)).start()
 
     def registar_cliente(self, conn, addr):
         try:
-            tipo = conn.recv(1024).decode('utf-8').strip()  # Espera receber o tipo do cliente (ex: "VB")
-            print(f"[Servidor TCP/IP] Cliente identificado como: {tipo}")
+            # Aguarda a string de identificação (A HMI em VB envia "PLC" logo após o Connect)
+            tipo = conn.recv(1024).decode('utf-8').strip()  
+            print(f"[Servidor TCP/IP] Cliente identificado com sucesso como: {tipo}")
 
             self.clients[tipo] = conn
 
             self.lidar_cliente(conn, tipo)
         except Exception as e:
-            print(f"[Servidor TCP/IP] Erro ao registar cliente: {e}")
+            print(f"[Servidor TCP/IP] Erro ao registar cliente de {addr}: {e}")
 
     def lidar_cliente(self, conn, tipo):
         while True:
@@ -50,30 +50,28 @@ class ServerComms:
                 comando = data.decode('utf-8').strip()
                 print(f"[{tipo}] Comando recebido: {comando}")
 
-            # chama o main
+                # Encaminha o comando para processamento na Main
                 if self.on_command:
                     self.on_command(tipo, comando)
 
             except Exception as e:
-                print(f"[Servidor TCP/IP] Erro com {tipo}: {e}")
+                print(f"[Servidor TCP/IP] Erro na ligação com o cliente {tipo}: {e}")
                 break
 
-        print(f"[Servidor TCP/IP] Cliente {tipo} desligado")
+        print(f"[Servidor TCP/IP] Cliente {tipo} desligado.")
         conn.close()
         if tipo in self.clients:
             del self.clients[tipo]
 
-    def send_auto_result(self, is_ok, image_frame, destino="VB"):
+    def send_auto_result(self, is_ok, image_frame, destino="PLC"):
         """Envia o resultado simplificado e a foto para a Aba Automático."""
         estado = "OK" if is_ok else "NOK"
         if destino in self.clients:
             conn = self.clients[destino]
 
             try:
-                # validação da imagem para evitar enviar imagens vazias em caso de erro na captura
                 if image_frame is None:
                     print("[Servidor] Frame inválido (AUTO)")
-                    # CORREÇÃO 1: Faltava o \n aqui também!
                     self.send_message("ERRO|FRAME_INVALIDO\n", destino) 
                     return
 
@@ -81,20 +79,18 @@ class ServerComms:
                 img_bytes = jpeg_buffer.tobytes()
                 tam = len(img_bytes)
 
-                # CORREÇÃO 2: AQUI ESTÁ O BUG PRINCIPAL! Adicionar o \n no final da string
                 cabecalho = f"AUTO|{estado}|{tam}\n" 
                 conn.sendall(cabecalho.encode('utf-8'))
 
                 time.sleep(0.05)
-
                 conn.sendall(img_bytes)
 
             except Exception as e:
-                print(f"[Servidor TCP/IP] Erro envio AUTO para {destino}: {e}")
+                print(f"[Servidor TCP/IP] Erro no envio AUTO para {destino}: {e}")
                 conn.close()
-                del self.clients[destino]
+                if destino in self.clients: del self.clients[destino]
 
-    def send_manual_result(self, is_ok, dados_cie, image_frame, destino="VB"):
+    def send_manual_result(self, is_ok, dados_cie, image_frame, destino="PLC"):
         """Envia o resultado detalhado, valores CIE por segmento e a foto para a Aba Manual."""
         estado = "OK" if is_ok else "NOK"
         if destino in self.clients:
@@ -110,7 +106,6 @@ class ServerComms:
                 img_bytes = jpeg_buffer.tobytes()
                 tam = len(img_bytes)
 
-                # NOVO FORMATO DE ENVIO PARA O VB.NET (10 Segmentos)
                 zonas = dados_cie.get("zonas", [])
                 str_segmentos = ""
                 
@@ -122,10 +117,8 @@ class ServerComms:
                     yp = z.get("yp_cie", 0.333)
                     lump = z.get("lump_padrao", lum) 
                     
-                    # Usa ponto para as decimais. Ex: |0.320;0.330;150.0;0.320;0.330;150.0
                     str_segmentos += f"|{x:.4f};{y:.4f};{lum:.1f};{xp:.4f};{yp:.4f};{lump:.1f}"
 
-                # Cabeçalho final a enviar para a HMI: MANUAL|OK|ZONA1|ZONA2|...|TAMANHO \n
                 cabecalho = f"MANUAL|{estado}{str_segmentos}|{tam}\n"
                 conn.sendall(cabecalho.encode('utf-8'))
 
@@ -133,11 +126,11 @@ class ServerComms:
                 conn.sendall(img_bytes)
 
             except Exception as e:
-                print(f"[Servidor TCP/IP] Erro envio MANUAL para {destino}: {e}")
+                print(f"[Servidor TCP/IP] Erro no envio MANUAL para {destino}: {e}")
                 conn.close()
-                del self.clients[destino]
+                if destino in self.clients: del self.clients[destino]
 
-    def send_image_only(self, image_frame, tag="CAPTURAR", destino="VB"):
+    def send_image_only(self, image_frame, tag="CAPTURAR", destino="PLC"):
         if destino in self.clients:
             conn = self.clients[destino]
             try:
@@ -145,26 +138,24 @@ class ServerComms:
                 img_bytes = jpeg_buffer.tobytes()
                 tam = len(img_bytes)
                 
-                # Envia cabeçalho claro para a HMI
                 cabecalho = f"{tag}|OK|{tam}\n"
                 conn.sendall(cabecalho.encode('utf-8'))
                 time.sleep(0.05)
                 conn.sendall(img_bytes)
             except Exception as e:
-                print(f"[Servidor] Erro envio imagem: {e}")
+                print(f"[Servidor] Erro ao enviar imagem pura: {e}")
 
-    # enviar mensagem simples
     def send_message(self, mensagem, destino):
         if destino in self.clients:
             try:
                 self.clients[destino].sendall(mensagem.encode('utf-8'))
             except:
-                print(f"[Servidor TCP/IP] Erro a enviar mensagem para {destino}")
+                print(f"[Servidor TCP/IP] Falha ao enviar mensagem direta para {destino}")
 
-    # fechar servidor
     def fechar_servidor(self):
         for conn in self.clients.values():
-            conn.close()
-
-        self.server_socket.close()
-        print("[Servidor TCP/IP] Encerrado.")
+            try: conn.close()
+            except: pass
+        try: self.server_socket.close()
+        except: pass
+        print("[Servidor TCP/IP] Encerrado com sucesso.")

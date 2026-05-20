@@ -8,13 +8,19 @@ from plc import PLCInterface
 from data_logger import guardar
 from datetime import datetime
 
-plc = PLCInterface(ip_plc="172.20.10.2", porta_plc=5000)
+# Instanciação limpa do módulo PLC (os parâmetros antigos de IP/Porta saíram)
+plc = PLCInterface()
 
 def iniciar_maquina():
-    print("A iniciar módulos...")
+    print("A iniciar módulos internos...")
     camara = CameraHandler(camera_id=0)
     visao = VisionProcessor()
-    servidor = ServerComms(ip="0.0.0.0", port=8080)
+    
+    # Inicia o servidor na porta 5000 para receber a conexão do VB.NET
+    servidor = ServerComms(ip="0.0.0.0", port=5000)
+    
+    # Vincula o servidor ao módulo PLC para intercâmbio de dados na mesma socket
+    plc.servidor = servidor
 
     foto_em_memoria = None
 
@@ -42,6 +48,7 @@ def iniciar_maquina():
                 nome_padrao = dados.get("padrão_selecionado", {}).get("nome", "Desconhecido") if isinstance(dados.get("padrão_selecionado"), dict) else "Desconhecido"
                 zonas = dados.get("zonas", [])
                 
+                # Executa a avaliação reutilizando o canal TCP aberto
                 decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
                 is_ok_final = (decisao_plc == "OK")
                 
@@ -70,7 +77,6 @@ def iniciar_maquina():
             frame = camara.capture_frame()
             if frame is not None:
                 foto_em_memoria = frame
-                # Usa a nova função que envia apenas a imagem com o tag correto
                 servidor.send_image_only(frame, tag="CAPTURAR", destino=cliente)
             else:
                 servidor.send_message("ERRO|SEM_IMAGEM\n", cliente)
@@ -79,18 +85,15 @@ def iniciar_maquina():
             if foto_em_memoria is not None:
                 _, frame_proc, dados = visao.process_and_decide(foto_em_memoria)
                 
-                # Extrai o ID e o Nome com segurança
                 id_padrao = dados.get("padrão_selecionado", {}).get("id", 0) if isinstance(dados.get("padrão_selecionado"), dict) else 0
                 nome_padrao = dados.get("padrão_selecionado", {}).get("nome", "Desconhecido") if isinstance(dados.get("padrão_selecionado"), dict) else "Desconhecido"
                 
-                # === NOVA LÓGICA DE BLOQUEIO ===
                 if id_padrao == 0 or nome_padrao == "Desconhecido":
-                    # Se não reconheceu, aborta e avisa a HMI!
                     servidor.send_message("ERRO|DESCONHECIDO\n", cliente)
                 else:
-                    # Se reconheceu, segue o fluxo normal
                     zonas = dados.get("zonas", [])
                     
+                    # Executa a avaliação reutilizando o canal TCP aberto
                     decisao_plc = plc.avaliar_peca_no_plc(id_padrao, zonas)
                     is_ok_final = (decisao_plc == "OK")
 
@@ -138,7 +141,6 @@ def iniciar_maquina():
                     servidor.send_message("ERRO|CAMERA_FALHOU\n", cliente)
                     return
                 
-                # 1. Extraímos as zonas diretamente aqui usando as funções que o visao já tem
                 characteristics = visao.guide_detector.analyze_guide(frame)
                 _, _, dados_zonas = visao._process_zone_segmentation(frame, characteristics)
                 zonas_padrao = dados_zonas.get("zonas", [])
@@ -148,9 +150,6 @@ def iniciar_maquina():
                     ret, jpeg_buffer = cv2.imencode('.jpg', frame)
                     if ret:
                         img_bytes = jpeg_buffer.tobytes()
-                        # =======================================================
-                        # GUARDAR O PADRÃO (p) COM VALORES DE CADA ZONA
-                        # Construir o ficheiro de texto detalhado para o padrão
                         txt_padrao = f"--- NOVO PADRÃO MESTRE CRIADO ---\n"
                         txt_padrao += f"Nome: {nome_alvo}\n"
                         txt_padrao += f"Data de Criação: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
@@ -159,14 +158,7 @@ def iniciar_maquina():
                         for z in zonas_padrao:
                             txt_padrao += f"Zona {z.get('zona', '?')}: Brilho Base={z.get('brilho_medio', 0):.1f} | X_CIE={z.get('x_cie', 0):.4f} | Y_CIE={z.get('y_cie', 0):.4f}\n"
                         
-                        # Guarda a imagem mestre e o TXT com todas as zonas na pasta do padrão
-                        guardar(
-                            guia=nome_alvo,
-                            tipo="p",
-                            img_data=img_bytes,
-                            txt_data=txt_padrao
-                        )
-                        # =======================================================
+                        guardar(guia=nome_alvo, tipo="p", img_data=img_bytes, txt_data=txt_padrao)
 
                         tamanho_img = len(jpeg_buffer.tobytes())
                         servidor.send_message(f"PADRAO_OK|{tamanho_img}\n", cliente)
@@ -183,11 +175,11 @@ def iniciar_maquina():
 
     try:
         threading.Thread(target=servidor.iniciar_servidor, daemon=True).start()
-        print("[Sistema] Servidor iniciado. À espera de clientes...")
+        print("[Sistema] Servidor ativo e pronto. À espera que o cliente VB conecte...")
         while True:
             time.sleep(1) 
     except KeyboardInterrupt:
-        print("\nEncerrar sistema...")
+        print("\nA encerrar o sistema de forma segura...")
     finally:
         camara.release()
         plc.desligar()  
