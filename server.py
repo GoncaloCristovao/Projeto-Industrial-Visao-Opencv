@@ -41,22 +41,23 @@ class ServerComms:
             print(f"[Servidor TCP/IP] Erro ao registar cliente: {e}")
 
     def lidar_cliente(self, conn, tipo):
-        print(f"[DEBUG] A iniciar leitura de comandos para {tipo}...") # Adiciona isto
+        print(f"[DEBUG] À espera de dados de {tipo}...")
         while True:
             try:
+                # Vamos ler apenas 1 byte para ver se o buffer está vivo
                 data = conn.recv(1024)
                 if not data:
-                    print("[DEBUG] Ligação fechada pelo cliente.") # Adiciona isto
+                    print(f"[DEBUG] Cliente {tipo} desconectou-se.")
                     break
-
+                
+                # Decodifica e imprime o que chegou bruto
                 comando = data.decode('utf-8').strip()
-                print(f"[{tipo}] Comando recebido: {comando}") # ISTO é o que tem de aparecer!
-
+                print(f"[DEBUG] Recebi isto: '{comando}'")
+                
                 if self.on_command:
                     self.on_command(tipo, comando)
-
             except Exception as e:
-                print(f"[Servidor TCP/IP] Erro crítico com {tipo}: {e}") # Adiciona isto para ver o erro
+                print(f"[DEBUG] ERRO: {e}")
                 break
 
         print(f"[Servidor TCP/IP] Cliente {tipo} desligado")
