@@ -16,7 +16,6 @@ class UploadServer:
         self.server_socket.bind((self.ip, self.port))
         self.server_socket.listen(5)
 
-        self.ultima_imagem_padrao = None
         self.ultima_imagem_peca = None
 
         print(f"[UPLOAD] Servidor de upload ativo em {self.ip}:{self.port}")
@@ -36,14 +35,12 @@ class UploadServer:
             partes = cabecalho.split("|")
             if len(partes) != 4:
                 conn.sendall(b"UPLOAD_ERRO")
-                conn.close()
                 return
 
             comando, tipo, nome_ficheiro, tamanho_str = partes
 
-            if comando != "UPLOAD":
+            if comando != "UPLOAD" or tipo != "PECA":
                 conn.sendall(b"UPLOAD_ERRO")
-                conn.close()
                 return
 
             tamanho = int(tamanho_str)
@@ -51,30 +48,16 @@ class UploadServer:
 
             if len(dados) != tamanho:
                 conn.sendall(b"UPLOAD_ERRO")
-                conn.close()
                 return
 
-            # prefixo para evitar conflitos de nomes
-            if tipo == "PADRAO":
-                nome_final = f"padrao_{nome_ficheiro}"
-            elif tipo == "PECA":
-                nome_final = f"peca_{nome_ficheiro}"
-            else:
-                conn.sendall(b"UPLOAD_ERRO")
-                conn.close()
-                return
-
+            nome_final = f"peca_{nome_ficheiro}"
             caminho = os.path.join(self.pasta_destino, nome_final)
 
             with open(caminho, "wb") as f:
                 f.write(dados)
 
-            if tipo == "PADRAO":
-                self.ultima_imagem_padrao = caminho
-                print(f"[UPLOAD] Nova imagem padrão guardada: {caminho}")
-            elif tipo == "PECA":
-                self.ultima_imagem_peca = caminho
-                print(f"[UPLOAD] Nova imagem peça guardada: {caminho}")
+            self.ultima_imagem_peca = caminho
+            print(f"[UPLOAD] Nova imagem peça guardada: {caminho}")
 
             conn.sendall(b"UPLOAD_OK")
 
