@@ -2,7 +2,7 @@ import socket
 
 
 class PLCInterface:
-    def _init_(self, ip_plc="172.20.10.2", porta_plc=5000):
+    def __init__(self, ip_plc="172.20.10.2", porta_plc=5000):
         self.ip = ip_plc
         self.port = porta_plc
         self.sock = None
