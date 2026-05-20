@@ -8,7 +8,7 @@ from plc import PLCInterface
 from data_logger import guardar
 from datetime import datetime
 
-plc = PLCInterface(ip_plc="192.168.54.251", porta_plc=5000)
+plc = PLCInterface(ip_plc="192.168.56.1", porta_plc=5000)
 
 def iniciar_maquina():
     print("A iniciar módulos...")
