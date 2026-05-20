@@ -189,6 +189,7 @@ def iniciar_maquina():
         print("\nEncerrar sistema...")
     finally:
         camara.release()
+        plc.desligar()  
         servidor.fechar_servidor()
 
 if __name__ == "__main__":

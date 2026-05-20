@@ -23,7 +23,8 @@ class CameraHandler:
         """
         self.camera_id = camera_id
         self.simulation_mode = simulation_mode
-        self.image_folder = Path(image_folder)
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        self.image_folder = Path(base_path) / image_folder
         self.test_images: List[Path] = []
         self.current_image_index = 0
         self.cap = None
