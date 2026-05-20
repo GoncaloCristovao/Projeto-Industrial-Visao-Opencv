@@ -85,7 +85,7 @@ def iniciar_maquina():
                 is_ok_final = (decisao_plc == "OK")
 
                 # ==========================================
-                # 📝 GUARDAR DADOS DO MODO PROCESSAR (MANUAL)
+                #  GUARDAR DADOS DO MODO PROCESSAR (MANUAL)
                 # ==========================================
                 txt_info = f"--- RESULTADO DA INSPEÇÃO (MODO MANUAL) ---\n"
                 txt_info += f"Data/Hora: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
