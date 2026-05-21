@@ -47,6 +47,7 @@ class VisionProcessor:
             self.pattern_db.delete_pattern(pattern_id)
             
         # Passamos os argumentos individualmente e incluímos os perfis de zona
+        # Passamos os argumentos individualmente e incluímos os perfis de zona
         sucesso, msg, novo_id = self.pattern_db.add_pattern(
             name=name if name else f"Guia_{pattern_id}",
             image_frame=frame,
@@ -54,7 +55,9 @@ class VisionProcessor:
             num_segments=guide_chars.num_segments,
             segment_spacing_mm=guide_chars.segment_spacing_mm,
             notes=notes,
-            zone_profiles=zone_profiles 
+            zone_profiles=zone_profiles,
+            guide_length_px=guide_chars.guide_length_px,  # NOVA LINHA: Envia o comprimento real
+            guide_width_px=guide_chars.guide_width_px     # NOVA LINHA: Envia a espessura real
         )
         
         if sucesso:

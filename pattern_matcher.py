@@ -178,26 +178,24 @@ class SmartPatternMatcher:
     
     def _calculate_segment_match(self, guide_segments: int, pattern_segments: int) -> float:
         """
-        Compatibilidade de número de segmentos.
-        
-        Para guias contínuas: tolerance automática
-        Para segmentadas: deve corresponder dentro de tolerance
+        Compatibilidade de número de segmentos com tolerância elástica.
         """
         if guide_segments == 0 and pattern_segments == 0:
-            # Ambas contínuas
             return 1.0
         
         if guide_segments == 0 or pattern_segments == 0:
-            # Uma é contínua, outra não
             return 0.2
         
-        # Ambas segmentadas: calcula diferença
         diff = abs(guide_segments - pattern_segments)
+        
+        # NOVA REGRA: Tolera 15% de variação no número de segmentos (mínimo de 3 segmentos)
+        # Isto impede que guias densas sejam rejeitadas por pequenos reflexos de luz.
+        tolerancia_dinamica = max(3, int(pattern_segments * 0.15))
         
         if diff == 0:
             return 1.0
-        elif diff <= self.segment_tolerance:
-            return 1.0 - (diff / self.segment_tolerance) * 0.5
+        elif diff <= tolerancia_dinamica:
+            return 1.0 - (diff / tolerancia_dinamica) * 0.5
         else:
             return 0.0
     

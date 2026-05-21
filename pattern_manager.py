@@ -114,18 +114,13 @@ class PatternDatabase:
                    num_segments: int = 0,
                    segment_spacing_mm: float = 0.0,
                    notes: str = "",
-                   zone_profiles: List[Dict] = None) -> Tuple[bool, str, int]:
-        """
-        Adiciona um novo padrão à base de dados.
-        
-        Returns:
-            (sucesso, mensagem, pattern_id)
-        """
-        # Verifica limite
+                   zone_profiles: List[Dict] = None,
+                   guide_length_px: int = 0,
+                   guide_width_px: int = 0) -> Tuple[bool, str, int]:
+        """Adiciona um novo padrão à base de dados com as dimensões reais cortadas."""
         if len(self.patterns) >= self.max_patterns:
             return False, f"Limite de {self.max_patterns} padrões atingido", -1
         
-        # Encontra próximo ID disponível
         pattern_id = None
         for i in range(1, self.max_patterns + 1):
             if i not in self.patterns:
@@ -136,25 +131,21 @@ class PatternDatabase:
             return False, "Sem espaço disponível na base de dados", -1
         
         try:
-            # Análise da imagem
             h, w = image_frame.shape[:2]
-            gray = cv2.cvtColor(image_frame, cv2.COLOR_BGR2GRAY)
-            brightness = float(np.mean(gray))
+            # CORREÇÃO: Usa as dimensões reais da guia cortada (se enviadas pelo vision.py)
+            final_length = guide_length_px if guide_length_px > 0 else w
+            final_width = guide_width_px if guide_width_px > 0 else h
             
-            # Calcula perfil de brilho
             brightness_profile = self._calculate_brightness_profile(image_frame)
             color_profile = self._calculate_color_profile(image_frame)
             
-            # Guarda imagem
             file_path = str(self.patterns_dir / f"pattern_{pattern_id:02d}_{name}.jpg")
             cv2.imwrite(file_path, image_frame)
-            
             file_hash = self._compute_file_hash(file_path)
             
             from datetime import datetime
             timestamp = datetime.now().isoformat()
             
-            # Cria metadados
             metadata = PatternMetadata(
                 pattern_id=pattern_id,
                 name=name,
@@ -162,8 +153,8 @@ class PatternDatabase:
                 is_continuous=is_continuous,
                 num_segments=num_segments,
                 segment_spacing_mm=segment_spacing_mm,
-                light_guide_length_px=w,
-                light_guide_width_px=h,
+                light_guide_length_px=final_length,  # Foi corrigido
+                light_guide_width_px=final_width,    # Foi corrigido
                 timestamp=timestamp,
                 hash=file_hash,
                 brightness_profile=brightness_profile,
@@ -175,10 +166,7 @@ class PatternDatabase:
             
             self.patterns[pattern_id] = metadata
             self._save_metadata()
-            
-            msg = f"Padrão '{name}' adicionado com sucesso (ID: {pattern_id})"
-            print(f"[PatternDB] {msg}")
-            return True, msg, pattern_id
+            return True, f"Padrão '{name}' adicionado (ID: {pattern_id})", pattern_id
             
         except Exception as e:
             return False, f"Erro ao adicionar padrão: {e}", -1
