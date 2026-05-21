@@ -35,17 +35,16 @@ class VisionProcessor:
         if frame is None or frame.size == 0:
             return False, "Frame inválido"
             
-        print(f"[Vision] A analisar novo padrão: {name} (Posição: {pattern_id})...")
+        print(f"[Vision] A adicionar padrão {name} ao slot {pattern_id}...")
         
-        # Faz a detecção de características base
         guide_chars = self.guide_detector.detect(frame)
         if guide_chars.confidence < 0.3:
-            return False, "A guia de luz não é nítida ou não existe na imagem."
+            return False, "Guia não detetada ou má qualidade"
             
-        # Cria os metadados
+        # Cria metadados com o ID correto
         metadata = PatternMetadata(
-            pattern_id=pattern_id,
-            name=name if name else f"Guia_Luz_{pattern_id}",
+            pattern_id=pattern_id,  
+            name=name if name else f"Guia_{pattern_id}",
             file_path="", 
             is_continuous=guide_chars.is_continuous,
             num_segments=guide_chars.num_segments,
