@@ -146,16 +146,20 @@ def iniciar_maquina():
                 id_alvo = int(partes[1])
                 nome_alvo = partes[2]
                 
-                frame = camara.capture_frame()
-                if frame is None:
-                    servidor.send_message("ERRO|CAMERA_FALHOU\n", cliente)
+                # --- ALTERAÇÃO AQUI ---
+                # Em vez de pedir uma foto nova à câmara (o que avança a simulação),
+                # usamos a foto que já foi capturada e está em memória.
+                if foto_em_memoria is None:
+                    servidor.send_message("ERRO|NENHUMA_FOTO_CAPTURADA\n", cliente)
                     return
+                
+                frame = foto_em_memoria.copy()
+                # ----------------------
                 
                 characteristics = visao.guide_detector.analyze_guide(frame)
                 _, _, dados_zonas = visao._process_zone_segmentation(frame, characteristics)
                 zonas_padrao = dados_zonas.get("zonas", [])
-                
-                # Atualizar esta linha para enviar os zone_profiles
+
                 success, msg = visao.add_new_standard(frame, pattern_id=id_alvo, name=nome_alvo, zone_profiles=zonas_padrao)
                 
                 if success:
