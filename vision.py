@@ -31,34 +31,38 @@ class VisionProcessor:
     # =========================================================================
     # GESTÃO DE PADRÕES
     # =========================================================================
-    def add_new_standard(self, frame: np.ndarray, pattern_id: int, name: str = None, notes: str = "") -> Tuple[bool, str]:
+    def add_new_standard(self, frame: np.ndarray, pattern_id: int, name: str = None, notes: str = "", zone_profiles: List[Dict] = None) -> Tuple[bool, str]:
         if frame is None or frame.size == 0:
             return False, "Frame inválido"
             
         print(f"[Vision] A adicionar padrão {name} ao slot {pattern_id}...")
         
-        guide_chars = self.guide_detector.detect(frame)
+        # CORREÇÃO A: O método correto é analyze_guide()
+        guide_chars = self.guide_detector.analyze_guide(frame)
         if guide_chars.confidence < 0.3:
             return False, "Guia não detetada ou má qualidade"
             
-        # Cria metadados com o ID correto
-        metadata = PatternMetadata(
-            pattern_id=pattern_id,  
+        # O gestor de padrões procura o próximo ID livre. Para forçar uma substituição,
+        # limpamos o ID existente antes de gravar.
+        if pattern_id in self.pattern_db.patterns:
+            self.pattern_db.delete_pattern(pattern_id)
+            
+        # CORREÇÃO B e C: Passar os argumentos individualmente em vez da 'metadata' 
+        # e incluir os perfis de zona extraídos no main.py
+        sucesso, msg, novo_id = self.pattern_db.add_pattern(
             name=name if name else f"Guia_{pattern_id}",
-            file_path="", 
+            image_frame=frame,
             is_continuous=guide_chars.is_continuous,
             num_segments=guide_chars.num_segments,
             segment_spacing_mm=guide_chars.segment_spacing_mm,
-            light_guide_length_px=guide_chars.guide_length_px,
-            light_guide_width_px=guide_chars.guide_width_px,
-            timestamp="", hash="", brightness_profile=[],
-            color_profile={"L":0, "a":0, "b":0},
-            is_valid=True, notes=notes, zone_profiles=[]
+            notes=notes,
+            zone_profiles=zone_profiles 
         )
         
-        # Guarda na BD usando a inteligência do manager
-        self.pattern_db.add_pattern(metadata, frame)
-        return True, f"Padrão gravado com sucesso na Posição {pattern_id}."
+        if sucesso:
+            return True, f"Padrão gravado com sucesso na Posição {pattern_id}."
+        else:
+            return False, msg
 
     # =========================================================================
     # PROCESSAMENTO E ORQUESTRAÇÃO

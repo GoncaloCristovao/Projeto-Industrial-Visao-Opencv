@@ -154,8 +154,10 @@ def iniciar_maquina():
                 characteristics = visao.guide_detector.analyze_guide(frame)
                 _, _, dados_zonas = visao._process_zone_segmentation(frame, characteristics)
                 zonas_padrao = dados_zonas.get("zonas", [])
+                
+                # Atualizar esta linha para enviar os zone_profiles
+                success, msg = visao.add_new_standard(frame, name=nome_alvo, pattern_id=id_alvo, zone_profiles=zonas_padrao)
 
-                success, msg = visao.add_new_standard(frame, name=nome_alvo, pattern_id=id_alvo)
                 if success:
                     ret, jpeg_buffer = cv2.imencode('.jpg', frame)
                     if ret:
