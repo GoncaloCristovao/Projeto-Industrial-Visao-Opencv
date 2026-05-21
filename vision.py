@@ -194,9 +194,13 @@ class VisionProcessor:
                 if zona_gray.size > 0:
                     mean_bgr = cv2.mean(img, mask=zone_mask)[:3]
                     pixel_xyz = cv2.cvtColor(np.uint8([[mean_bgr]]), cv2.COLOR_BGR2XYZ)[0][0]
-                    soma = sum(pixel_xyz)
+                    
+                    # CORREÇÃO: Forçar a passagem para FLOAT para impedir Overflow no Python
+                    soma = float(pixel_xyz[0]) + float(pixel_xyz[1]) + float(pixel_xyz[2])
+                    
                     if soma > 0:
-                        x_cie, y_cie = pixel_xyz[0]/soma, pixel_xyz[1]/soma
+                        x_cie = float(pixel_xyz[0]) / soma
+                        y_cie = float(pixel_xyz[1]) / soma
 
                 zonas_info.append({
                     "zona": i + 1,

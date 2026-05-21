@@ -37,6 +37,12 @@ def iniciar_maquina():
     def tratar_comando(cliente, comando):
         nonlocal foto_em_memoria
         
+        # INTERCETAR RESPOSTA DO PLC ANTES DE QUALQUER OUTRO COMANDO PARA EVITAR CONFLITOS
+        if cliente == "PLC" and comando in ["OK", "NOK"]:
+            plc.ultima_decisao = comando
+            plc.evento_resposta.set() # Destranca o plc.py que está à espera
+            return
+        
         # Filtro Antibloqueio para não colidir o PING com os Botões
         if "CHECK_PADRAO" in comando or "PADRAO" in comando:
             cmd_limpo = comando.replace("PING", "").strip()
