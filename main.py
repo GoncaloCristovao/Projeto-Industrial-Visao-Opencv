@@ -156,8 +156,8 @@ def iniciar_maquina():
                 zonas_padrao = dados_zonas.get("zonas", [])
                 
                 # Atualizar esta linha para enviar os zone_profiles
-                success, msg = visao.add_new_standard(frame, name=nome_alvo, pattern_id=id_alvo, zone_profiles=zonas_padrao)
-
+                success, msg = visao.add_new_standard(frame, pattern_id=id_alvo, name=nome_alvo, zone_profiles=zonas_padrao)
+                
                 if success:
                     ret, jpeg_buffer = cv2.imencode('.jpg', frame)
                     if ret:

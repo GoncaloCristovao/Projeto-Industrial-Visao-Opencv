@@ -37,7 +37,6 @@ class VisionProcessor:
             
         print(f"[Vision] A adicionar padrão {name} ao slot {pattern_id}...")
         
-        # CORREÇÃO A: O método correto é analyze_guide()
         guide_chars = self.guide_detector.analyze_guide(frame)
         if guide_chars.confidence < 0.3:
             return False, "Guia não detetada ou má qualidade"
@@ -47,8 +46,7 @@ class VisionProcessor:
         if pattern_id in self.pattern_db.patterns:
             self.pattern_db.delete_pattern(pattern_id)
             
-        # CORREÇÃO B e C: Passar os argumentos individualmente em vez da 'metadata' 
-        # e incluir os perfis de zona extraídos no main.py
+        # Passamos os argumentos individualmente e incluímos os perfis de zona
         sucesso, msg, novo_id = self.pattern_db.add_pattern(
             name=name if name else f"Guia_{pattern_id}",
             image_frame=frame,
