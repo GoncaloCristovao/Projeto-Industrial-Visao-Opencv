@@ -23,7 +23,7 @@ class VisionProcessor:
         
         # Parâmetros mecânicos base
         self.scale = 0.7
-        self.threshold_value = 120
+        self.threshold_value = 180
         self.half_thickness = 18
         
         print("[Vision] Sistema Dinâmico (N-Segmentos) inicializado.")
@@ -31,32 +31,35 @@ class VisionProcessor:
     # =========================================================================
     # GESTÃO DE PADRÕES
     # =========================================================================
-    def add_new_standard(self, frame: np.ndarray, name: str = None, notes: str = "") -> Tuple[bool, str]:
+    def add_new_standard(self, frame: np.ndarray, pattern_id: int, name: str = None, notes: str = "") -> Tuple[bool, str]:
         if frame is None or frame.size == 0:
             return False, "Frame inválido"
+            
+        print(f"[Vision] A analisar novo padrão: {name} (Posição: {pattern_id})...")
         
-        # Deteta a estrutura
-        characteristics = self.guide_detector.analyze_guide(frame)
-        
-        # Corta a peça em fatias e extrai as cores/luz!
-        _, _, dados_zonas = self._process_zone_segmentation(frame, characteristics)
-        perfil_das_zonas = dados_zonas.get("zonas", [])
-        
-        if name is None:
-            guide_type = "Continua" if characteristics.is_continuous else f"Segmentada_{characteristics.num_segments}seg"
-            name = f"Padrao_{guide_type}"
-        
-        success, message, pattern_id = self.pattern_db.add_pattern(
-            name=name,
-            image_frame=frame,
-            is_continuous=characteristics.is_continuous,
-            num_segments=characteristics.num_segments,
-            segment_spacing_mm=characteristics.segment_spacing_mm,
-            notes=notes,
-            zone_profiles=perfil_das_zonas # Passa os valores para gravar na BD!
+        # Faz a detecção de características base
+        guide_chars = self.guide_detector.detect(frame)
+        if guide_chars.confidence < 0.3:
+            return False, "A guia de luz não é nítida ou não existe na imagem."
+            
+        # Cria os metadados
+        metadata = PatternMetadata(
+            pattern_id=pattern_id,
+            name=name if name else f"Guia_Luz_{pattern_id}",
+            file_path="", 
+            is_continuous=guide_chars.is_continuous,
+            num_segments=guide_chars.num_segments,
+            segment_spacing_mm=guide_chars.segment_spacing_mm,
+            light_guide_length_px=guide_chars.guide_length_px,
+            light_guide_width_px=guide_chars.guide_width_px,
+            timestamp="", hash="", brightness_profile=[],
+            color_profile={"L":0, "a":0, "b":0},
+            is_valid=True, notes=notes, zone_profiles=[]
         )
         
-        return success, message
+        # Guarda na BD usando a inteligência do manager
+        self.pattern_db.add_pattern(metadata, frame)
+        return True, f"Padrão gravado com sucesso na Posição {pattern_id}."
 
     # =========================================================================
     # PROCESSAMENTO E ORQUESTRAÇÃO
