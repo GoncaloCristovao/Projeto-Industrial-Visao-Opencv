@@ -1,11 +1,12 @@
+import platform
 import cv2
 import numpy as np
 import os
 import json
+import hashlib
 from pathlib import Path
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional, Tuple
-import hashlib
 
 
 @dataclass
@@ -31,16 +32,50 @@ class PatternDatabase:
     """Gestor de base de dados de padrões de guias de luz"""
     
     def __init__(self, db_path: str = "pattern_database"):
-        self.db_path = Path(db_path)
-        self.db_path.mkdir(exist_ok=True)
+        # 1. DETETAR O AMBIENTE DE TRABALHO (DESKTOP) DINAMICAMENTE
+        sistema = platform.system()
+        home_dir = Path.home()
         
+        if sistema == "Windows":
+            # No Windows, o Desktop pode estar na pasta padrão ou gerido pelo OneDrive
+            desktop_padrao = home_dir / "Desktop"
+            desktop_onedrive = home_dir / "OneDrive" / "Desktop"
+            
+            if desktop_onedrive.exists():
+                desktop_dir = desktop_onedrive
+            else:
+                desktop_dir = desktop_padrao
+        else:
+            # Em Linux (Raspberry Pi / Raspbian OS), o caminho é habitualmente /home/pi/Desktop
+            # Nota: Se o sistema estiver em Português, a pasta pode chamar-se "Ambiente de Trabalho"
+            desktop_pt = home_dir / "Ambiente de Trabalho"
+            desktop_en = home_dir / "Desktop"
+            
+            if desktop_pt.exists():
+                desktop_dir = desktop_pt
+            else:
+                desktop_dir = desktop_en
+
+        # 2. CONFIGURAR A PASTA DA BASE DE DADOS NO DESKTOP
+        # Isto criará uma pasta chamada "pattern_database" no Ambiente de Trabalho
+        self.db_path = desktop_dir / db_path
+        self.db_path.mkdir(parents=True, exist_ok=True)
+        
+        # Cria a subpasta para as imagens dos padrões dentro do desktop
         self.patterns_dir = self.db_path / "patterns"
         self.patterns_dir.mkdir(exist_ok=True)
         
+        # O ficheiro metadata.json ficará guardado nesta pasta no teu Desktop
         self.metadata_file = self.db_path / "metadata.json"
+        
+        # Log no terminal para saberes exatamente onde o ficheiro foi parar
+        print(f"[PatternDB] Base de dados configurada em: {self.metadata_file}")
+        
+        # Configurações originais do teu código
         self.max_patterns = 12
         self.patterns: Dict[int, PatternMetadata] = {}
         
+        # Carrega os dados existentes
         self._load_metadata()
     
     def _load_metadata(self):
