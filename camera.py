@@ -5,12 +5,20 @@ import numpy as np
 from pathlib import Path
 from typing import List
 
+# --- ADIÇÃO PARA SUPORTE RASPBERRY PI 5 ---
+try:
+    from picamera2 import Picamera2 # type: ignore
+    HAS_PICAMERA = True
+except ImportError:
+    HAS_PICAMERA = False
+# ------------------------------------------
+
 
 class CameraHandler:
     """
     Câmara com Modo SIMULAÇÃO usando pasta de imagens.
     
-    MODO REAL: Usa webcam ligada (quando disponível)
+    MODO REAL: Usa webcam ligada (ou Pi Camera no RPi 5, quando disponível)
     MODO SIMULAÇÃO: Carrega imagens sequencialmente de uma pasta
     """
     
@@ -28,6 +36,7 @@ class CameraHandler:
         self.test_images: List[Path] = []
         self.current_image_index = 0
         self.cap = None
+        self.uso_picamera = False  # Nova flag para saber se estamos a usar o Pi 5
         
         if self.simulation_mode:
             print(f"[Câmara]  MODO SIMULAÇÃO ativado")
@@ -35,15 +44,30 @@ class CameraHandler:
         else:
             print(f"[Câmara]  Tentando ligar à câmara física (ID: {camera_id})...")
             try:
-                self.cap = cv2.VideoCapture(self.camera_id)
+                # SE FOR UM RASPBERRY PI 5 E TIVER CÂMARA OFICIAL:
+                if HAS_PICAMERA:
+                    print("[Câmara] Módulo Picamera2 detetado. A usar motor RPi 5...")
+                    self.picam2 = Picamera2()
+                    # Forçamos o conversor do Pi a entregar a imagem a 8-bits (BGR)
+                    config = self.picam2.create_preview_configuration(main={"size": (1280, 720), "format": "BGR888"})
+                    self.picam2.configure(config)
+                    self.picam2.start()
+                    self.uso_picamera = True
+                    print("[Câmara] Câmara física conectada com sucesso (via libcamera)!")
+                    time.sleep(1)
                 
-                if not self.cap.isOpened():
-                    print(f"[Câmara]  Câmara não disponível. A mudar para MODO SIMULAÇÃO...")
-                    self.simulation_mode = True
-                    self._load_test_images_from_folder()
+                # SE FOR UM PC NORMAL OU WEBCAM USB:
                 else:
-                    print(f"[Câmara] Câmara física conectada com sucesso!")
-                    time.sleep(1)  # Tempo para ajuste automático
+                    print("[Câmara] A usar motor OpenCV Clássico...")
+                    self.cap = cv2.VideoCapture(self.camera_id)
+                    
+                    if not self.cap.isOpened():
+                        print(f"[Câmara]  Câmara não disponível. A mudar para MODO SIMULAÇÃO...")
+                        self.simulation_mode = True
+                        self._load_test_images_from_folder()
+                    else:
+                        print(f"[Câmara] Câmara física conectada com sucesso!")
+                        time.sleep(1)  # Tempo para ajuste automático
             except Exception as e:
                 print(f"[Câmara]  Erro ao aceder câmara: {e}")
                 print("[Câmara]  A mudar automaticamente para MODO SIMULAÇÃO")
@@ -78,7 +102,7 @@ class CameraHandler:
         """
         Capta uma fotografia.
         
-        MODO REAL: Captura da webcam
+        MODO REAL: Captura da webcam ou Pi Camera
         MODO SIMULAÇÃO: Retorna próxima imagem da pasta (modo rotativo)
         """
         if self.simulation_mode:
@@ -88,17 +112,26 @@ class CameraHandler:
     
     def _capture_from_camera(self):
         """Captura frame de câmara física"""
-        if not self.cap or not self.cap.isOpened():
-            print("[Câmara]  Câmara não está disponível")
-            return None
-        
-        ret, frame = self.cap.read()
-        
-        if not ret or frame is None:
-            print("[Câmara]  Falha ao capturar imagem da câmara")
-            return None
-        
-        return frame
+        if self.uso_picamera:
+            # O Pi 5 tira a foto e já entrega a matriz de 8-bits
+            try:
+                return self.picam2.capture_array()
+            except Exception as e:
+                print(f"[Câmara]  Falha ao capturar imagem da Picamera2: {e}")
+                return None
+        else:
+            # OpenCV Clássico
+            if not self.cap or not self.cap.isOpened():
+                print("[Câmara]  Câmara não está disponível")
+                return None
+            
+            ret, frame = self.cap.read()
+            
+            if not ret or frame is None:
+                print("[Câmara]  Falha ao capturar imagem da câmara")
+                return None
+            
+            return frame
     
     def _capture_from_folder(self):
         """
@@ -155,7 +188,10 @@ class CameraHandler:
             print("[Câmara]  Modo simulação encerrado.")
             print(f"[Câmara]  Total de imagens processadas: {self.current_image_index}")
         else:
-            if self.cap and self.cap.isOpened():
+            if self.uso_picamera:
+                self.picam2.stop()
+                print("[Câmara]  Câmara física do RPi 5 desligada com segurança.")
+            elif self.cap and self.cap.isOpened():
                 self.cap.release()
                 print("[Câmara]  Câmara física desligada com segurança.")
 
@@ -218,4 +254,4 @@ class CameraHandler:
         if hasattr(self, 'cap') and self.cap.isOpened():
             self.cap.release()
             print("[Câmara] Desligada com segurança.")
-"""  
+"""

@@ -16,7 +16,7 @@ plc = PLCInterface()
 
 def iniciar_maquina():
     print("A iniciar módulos internos...")
-    camara = CameraHandler(camera_id=0)
+    camara = CameraHandler(camera_id=0, simulation_mode=False)
 
     # Define o diretório base como sendo o local onde este main.py está guardado
     base_dir = os.path.dirname(os.path.abspath(__file__))
