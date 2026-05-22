@@ -55,7 +55,7 @@ class CameraHandler:
                     self.picam2 = Picamera2()
                     # Forçamos o conversor do Pi a entregar a imagem a 8-bits (BGR)
                     print("[DEBUG CÂMARA] A configurar pipeline BGR888 a 1280x720...")
-                    config = self.picam2.create_preview_configuration(main={"size": (1280, 720), "format": "BGR888"})
+                    config = self.picam2.create_preview_configuration(main={"format": "BGR888"})
                     self.picam2.configure(config)
                     self.picam2.start()
                     self.uso_picamera = True
