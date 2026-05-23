@@ -18,10 +18,15 @@ def iniciar_maquina():
     print("A iniciar módulos internos...")
     camara = CameraHandler(camera_id=0, simulation_mode=False)
 
-    # Define o diretório base como sendo o local onde este main.py está guardado
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    # Constrói o caminho completo para a pasta pattern_database
-    db_path = os.path.join(base_dir, "pattern_database")
+    # Define o diretório base como sendo o ambiente de trabalho
+    home_dir = os.path.expanduser("~")
+    # Define o caminho para a nova pasta "Metadata_guias" no Ambiente de Trabalho
+    db_path = os.path.join(home_dir, "Desktop", "Metadata_guias")
+
+    # Garante que a pasta é criada no Ambiente de Trabalho caso ainda não exista
+    if not os.path.exists(db_path):
+        os.makedirs(db_path)
+        print(f"[Sistema] Nova pasta de metadados criada com sucesso em: {db_path}")
     
     # Passa o caminho absoluto para o VisionProcessor
     visao = VisionProcessor(db_path=db_path)
