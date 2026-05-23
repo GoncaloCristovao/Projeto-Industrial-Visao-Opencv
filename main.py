@@ -34,16 +34,29 @@ def iniciar_maquina():
 
     foto_em_memoria = None
 
+    # NOVAS VARIÁVEIS PARA O GATILHO (Opção A)
+    foto_auto_pendente = None
+    inspecao_feita = True # Começa a True para não disparar sem a primeira peça chegar
+
     def tratar_comando(cliente, comando):
-        nonlocal foto_em_memoria
+        nonlocal foto_em_memoria, foto_auto_pendente, inspecao_feita
         
-        # INTERCETAR RESPOSTA DO PLC ANTES DE QUALQUER OUTRO COMANDO PARA EVITAR CONFLITOS
-        if cliente == "PLC" and comando in ["OK", "NOK"]:
-            plc.ultima_decisao = comando
-            plc.evento_resposta.set() # Destranca o plc.py que está à espera
-            return
+        # 1. INTERCETAR COMANDOS DIRETOS DO PLC
+        if cliente == "PLC":
+            if "SENSOR_ON" in comando:
+                print("[INFO] Sensor ativado! A capturar foto do momento exato...")
+                foto_auto_pendente = camara.capture_frame()
+                inspecao_feita = False # Destranca a fechadura para o modo AUTO
+                return
+            elif "SENSOR_OFF" in comando:
+                print("[INFO] Sensor desativado. A aguardar próxima peça...")
+                return
+            elif comando in ["OK", "NOK"]:
+                plc.ultima_decisao = comando
+                plc.evento_resposta.set()
+                return
         
-        # Filtro Antibloqueio para não colidir o PING com os Botões
+        # Filtro Antibloqueio
         if "CHECK_PADRAO" in comando or "PADRAO" in comando:
             cmd_limpo = comando.replace("PING", "").strip()
         else:
@@ -57,8 +70,14 @@ def iniciar_maquina():
             servidor.send_message("PONG\n", cliente)
 
         elif cmd_limpo == "AUTO":
-            frame = camara.capture_frame()
-            if frame is not None:
+            # Se não há peça nova pendente para inspecionar, avisa a Interface para esperar
+            if inspecao_feita or foto_auto_pendente is None:
+                servidor.send_message("ESPERA_PECA|AGUARDAR\n", cliente)
+            else:
+                # SUCESSO: Há uma foto fresca capturada pelo gatilho do PLC!
+                frame = foto_auto_pendente
+                inspecao_feita = True # Tranca para não avaliar a mesma foto duas vezes
+                
                 _, frame_proc, dados = visao.process_and_decide(frame)
                 id_padrao = dados.get("padrão_selecionado", {}).get("id", 1) if isinstance(dados.get("padrão_selecionado"), dict) else 1
                 nome_padrao = dados.get("padrão_selecionado", {}).get("nome", "Desconhecido") if isinstance(dados.get("padrão_selecionado"), dict) else "Desconhecido"
@@ -86,8 +105,6 @@ def iniciar_maquina():
                 # ==========================================
 
                 servidor.send_auto_result(is_ok_final, frame_proc, destino=cliente)
-            else:
-                servidor.send_message("ERRO|SEM_IMAGEM\n", cliente)
 
         elif cmd_limpo == "CAPTURAR":
             frame = camara.capture_frame()
