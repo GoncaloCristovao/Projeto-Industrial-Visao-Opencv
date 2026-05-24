@@ -34,7 +34,7 @@ class GuideCharacteristicDetector:
                           (ajustar conforme calibração da câmara)
         """
         self.px_to_mm_ratio = px_to_mm_ratio
-        self.segment_min_brightness = 10   
+        self.segment_min_brightness = 60
         self.peak_prominence_threshold = 10  
         self.min_peak_distance = 2
     

@@ -23,7 +23,7 @@ class VisionProcessor:
         
         # Parâmetros mecânicos base
         self.scale = 1.0
-        self.threshold_value = 180
+        self.threshold_value = 60
         self.half_thickness = 18
         
         print("[Vision] Sistema Dinâmico (N-Segmentos) inicializado.")
