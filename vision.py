@@ -97,13 +97,17 @@ class VisionProcessor:
                 padrao_metadata = self.pattern_db.patterns[id_selecionado]
                 perfis_padrao = padrao_metadata.zone_profiles
                 
-                # Se o padrão tiver as zonas gravadas, substitui os valores provisórios 0.333
-                if perfis_padrao and len(perfis_padrao) == len(dados_zonas["zonas"]):
-                    for i, zona_atual in enumerate(dados_zonas["zonas"]):
+                # CORREÇÃO: Usamos o 'min' para emparelhar as fatias de forma tolerante, 
+                # ignorando se sobrou ou faltou uma fatia devido à vibração da câmara
+                if perfis_padrao:
+                    limite_zonas = min(len(perfis_padrao), len(dados_zonas["zonas"]))
+                    for i in range(limite_zonas):
+                        zona_atual = dados_zonas["zonas"][i]
                         zona_padrao = perfis_padrao[i]
+                        
                         zona_atual["xp_cie"] = zona_padrao.get("x_cie", 0.333)  
                         zona_atual["yp_cie"] = zona_padrao.get("y_cie", 0.333)  
-                        zona_atual["lump_padrao"] = zona_padrao.get("brilho_medio", 200.0)  
+                        zona_atual["lump_padrao"] = zona_padrao.get("brilho_medio", 200.0) 
 
             # Empacota os dados para o Main enviar ao PLC e à HMI
             dados_saida = {
