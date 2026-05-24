@@ -170,7 +170,7 @@ class VisionProcessor:
                 # Caso Contínua: Divide o comprimento por fatias fixas (ex: a cada 30px)
                 # Isto evita que defeitos pequenos sejam "escondidos" por fatias grandes
                 comprimento_total = guide_chars.guide_length_px if guide_chars else length
-                tamanho_fatia_px = 3
+                tamanho_fatia_px = 10
                 partes_dinamicas = max(4, int(comprimento_total // tamanho_fatia_px))
             
             zonas_info = []
