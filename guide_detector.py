@@ -34,9 +34,9 @@ class GuideCharacteristicDetector:
                           (ajustar conforme calibração da câmara)
         """
         self.px_to_mm_ratio = px_to_mm_ratio
-        self.segment_min_brightness = 180    
-        self.peak_prominence_threshold = 30  
-        self.min_peak_distance = 10
+        self.segment_min_brightness = 100   
+        self.peak_prominence_threshold = 10  
+        self.min_peak_distance = 2
     
     def analyze_guide(self, frame: np.ndarray) -> GuideCharacteristics:
         """

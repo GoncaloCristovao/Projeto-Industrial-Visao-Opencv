@@ -22,7 +22,7 @@ class VisionProcessor:
         self.comparison_engine = PatternComparisonEngine()
         
         # Parâmetros mecânicos base
-        self.scale = 0.7
+        self.scale = 1.0
         self.threshold_value = 180
         self.half_thickness = 18
         
@@ -166,7 +166,7 @@ class VisionProcessor:
                 # Caso Contínua: Divide o comprimento por fatias fixas (ex: a cada 30px)
                 # Isto evita que defeitos pequenos sejam "escondidos" por fatias grandes
                 comprimento_total = guide_chars.guide_length_px if guide_chars else length
-                tamanho_fatia_px = 30 
+                tamanho_fatia_px = 3
                 partes_dinamicas = max(4, int(comprimento_total // tamanho_fatia_px))
             
             zonas_info = []
