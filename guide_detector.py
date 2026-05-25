@@ -35,8 +35,8 @@ class GuideCharacteristicDetector:
         """
         self.px_to_mm_ratio = px_to_mm_ratio
         self.segment_min_brightness = 60
-        self.peak_prominence_threshold = 3
-        self.min_peak_distance = 2
+        self.peak_prominence_threshold = 6 # ir variando este valor para encontrar o melhor equilíbrio entre detecção de segmentos e ruído
+        self.min_peak_distance = 5 #ir varinado este valor 1 unidade de cada vez até detetar um numero consistente de segmentos
     
     def analyze_guide(self, frame: np.ndarray) -> GuideCharacteristics:
         """
