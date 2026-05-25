@@ -146,18 +146,20 @@ class GuideCharacteristicDetector:
         return roi, mask, direction
     
     def _extract_intensity_profile(self, roi: np.ndarray, direction: str) -> np.ndarray:
-        # Em vez de apenas np.max, vamos usar uma média de uma faixa central.
-        # Isto estabiliza o perfil e evita que ruídos isolados destruam a deteção.
+        """
+        Extrai perfil de intensidade ao longo da guia.
+        Usa o valor MÁXIMO da coluna/linha para não diluir o brilho
+        com o fundo escuro em redor da peça.
+        """
         if direction == "horizontal":
-            # Pega nas 5 linhas centrais da guia, isso torna o sinal muito mais estável
-            perfil_area = roi[roi.shape[0]//2 - 2 : roi.shape[0]//2 + 2, :]
-            profile = np.mean(perfil_area, axis=0)
+            # Mudámos np.mean para np.max!
+            profile = np.max(roi, axis=0)
         else:
-            perfil_area = roi[:, roi.shape[1]//2 - 2 : roi.shape[1]//2 + 2]
-            profile = np.mean(perfil_area, axis=1)
-            
-        # Suavização adaptativa
-        profile = cv2.GaussianBlur(profile.astype(np.float32), (7, 1), 0)
+            profile = np.max(roi, axis=1)
+        
+        # Suaviza o perfil com uma média móvel
+        profile = np.convolve(profile, np.ones(5)/5.0, mode='same')
+        
         return profile
     
     def _detect_segments(self, intensity_profile: np.ndarray) -> Tuple[List[int], bool]:
