@@ -85,9 +85,9 @@ class VisionProcessor:
             guide_characteristics = self.guide_detector.analyze_guide(frame)
             
             # ---> ADICIONA ESTAS 3 LINHAS DE DEBUG AQUI <---
-            tipo_padrao = "CONTÍNUA" if guide_chars.is_continuous else "SEGMENTADA"
+            tipo_padrao = "CONTÍNUA" if guide_characteristics.is_continuous else "SEGMENTADA"
             print("-" * 50)
-            print(f">>> [DEBUG GRAVAÇÃO] PADRÃO GRAVADO COMO: {tipo_padrao} | Segmentos: {guide_chars.num_segments}")
+            print(f">>> [DEBUG GRAVAÇÃO] PADRÃO GRAVADO COMO: {tipo_padrao} | Segmentos: {guide_characteristics.num_segments}")
             print("-" * 50)
         # -----------------------------------------------
 
