@@ -34,8 +34,8 @@ class GuideCharacteristicDetector:
                           (ajustar conforme calibração da câmara)
         """
         self.px_to_mm_ratio = px_to_mm_ratio
-        self.segment_min_brightness = 60
-        self.peak_prominence_threshold = 6 # ir variando este valor para encontrar o melhor equilíbrio entre detecção de segmentos e ruído
+        self.segment_min_brightness = 10
+        self.peak_prominence_threshold = 7 # ir variando este valor para encontrar o melhor equilíbrio entre detecção de segmentos e ruído
         self.min_peak_distance = 5 #ir varinado este valor 1 unidade de cada vez até detetar um numero consistente de segmentos
     
     def analyze_guide(self, frame: np.ndarray) -> GuideCharacteristics:
@@ -110,7 +110,7 @@ class GuideCharacteristicDetector:
         h, w = gray.shape[:2]
         
         # Aplica threshold para encontrar as regiões brilhantes
-        _, thresh = cv2.threshold(gray, 180, 255, cv2.THRESH_BINARY)
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
         
         # Morphology para limpar a imagem
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))

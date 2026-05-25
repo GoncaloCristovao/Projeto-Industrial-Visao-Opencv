@@ -23,7 +23,7 @@ class VisionProcessor:
         
         # Parâmetros mecânicos base
         self.scale = 1.0
-        self.threshold_value = 60
+        self.threshold_value = 10
         self.half_thickness = 18
         
         print("[Vision] Sistema Dinâmico (N-Segmentos) inicializado.")
@@ -38,6 +38,14 @@ class VisionProcessor:
         print(f"[Vision] A adicionar padrão {name} ao slot {pattern_id}...")
         
         guide_chars = self.guide_detector.analyze_guide(frame)
+
+        # ---> ADICIONA ESTAS 3 LINHAS DE DEBUG AQUI <---
+        tipo_padrao = "CONTÍNUA" if guide_chars.is_continuous else "SEGMENTADA"
+        print("-" * 50)
+        print(f">>> [DEBUG GRAVAÇÃO] PADRÃO GRAVADO COMO: {tipo_padrao} | Segmentos: {guide_chars.num_segments}")
+        print("-" * 50)
+        # -----------------------------------------------
+
         if guide_chars.confidence < 0.3:
             return False, "Guia não detetada ou má qualidade"
             
@@ -76,6 +84,13 @@ class VisionProcessor:
             # 1. Deteta características físicas (Contínua/Segmentada e N de segmentos)
             guide_characteristics = self.guide_detector.analyze_guide(frame)
             
+            # ---> ADICIONA ESTAS 3 LINHAS DE DEBUG AQUI <---
+            tipo_padrao = "CONTÍNUA" if guide_chars.is_continuous else "SEGMENTADA"
+            print("-" * 50)
+            print(f">>> [DEBUG GRAVAÇÃO] PADRÃO GRAVADO COMO: {tipo_padrao} | Segmentos: {guide_chars.num_segments}")
+            print("-" * 50)
+        # -----------------------------------------------
+
             # 2. Faz a segmentação DINÂMICA baseada nos dentes detetados ou no comprimento
             sucesso_seg, frame_proc, dados_zonas = self._process_zone_segmentation(frame, guide_characteristics)
             
@@ -144,8 +159,14 @@ class VisionProcessor:
             _, thresh = cv2.threshold(blur, self.threshold_value, 255, cv2.THRESH_BINARY)
             
             # Deteção de linha para alinhamento
-            lines = cv2.HoughLinesP(thresh, 1, np.pi/180, 80, minLineLength=200, maxLineGap=30)
-            if lines is None: return False, img, {"zonas": []}
+            # Deteção de linha para alinhamento - Ajustado para tolerar guias segmentadas (linhas tracejadas)
+            lines = cv2.HoughLinesP(thresh, 1, np.pi/180, 40, minLineLength=100, maxLineGap=150)
+
+
+            # SE A MÁQUINA NÃO ENCONTRAR A LINHA, NÃO DÁ ERRO, APENAS TERMINA
+            if lines is None:
+                print("[DEBUG] Nenhuma linha detetada na imagem. Ajustar iluminação ou threshold.")
+                return False, img, {"zonas": []}
             
             best_line = max(lines, key=lambda l: np.hypot(l[0][2]-l[0][0], l[0][3]-l[0][1]))[0]
             x1, y1, x2, y2 = best_line
