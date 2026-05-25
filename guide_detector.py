@@ -35,7 +35,7 @@ class GuideCharacteristicDetector:
         """
         self.px_to_mm_ratio = px_to_mm_ratio
         self.segment_min_brightness = 10
-        self.peak_prominence_threshold = 7 # ir variando este valor para encontrar o melhor equilíbrio entre detecção de segmentos e ruído
+        self.peak_prominence_threshold = 3 # ir variando este valor para encontrar o melhor equilíbrio entre detecção de segmentos e ruído
         self.min_peak_distance = 5 #ir varinado este valor 1 unidade de cada vez até detetar um numero consistente de segmentos
     
     def analyze_guide(self, frame: np.ndarray) -> GuideCharacteristics:
@@ -146,19 +146,36 @@ class GuideCharacteristicDetector:
         return roi, mask, direction
     
     def _extract_intensity_profile(self, roi: np.ndarray, direction: str) -> np.ndarray:
+
         """
         Extrai perfil de intensidade ao longo da guia.
-        Usa o valor MÁXIMO da coluna/linha para não diluir o brilho
-        com o fundo escuro em redor da peça.
+        Foca-se APENAS nas 3 linhas/colunas centrais para evitar o 'blooming' 
+        das bordas e usa np.mean para não tapar os vales escuros.
         """
         if direction == "horizontal":
-            # Mudámos np.mean para np.max!
-            profile = np.max(roi, axis=0)
+            # Encontra o centro vertical da ROI
+            h = roi.shape[0]
+            center_y = h // 2
+            
+            # Pega apenas em 3 linhas centrais (centro, cima, baixo)
+            y_start = max(0, center_y - 1)
+            y_end = min(h, center_y + 2)
+            
+            core_roi = roi[y_start:y_end, :]
+            profile = np.mean(core_roi, axis=0) # Usar a média do miolo, não o np.max!
         else:
-            profile = np.max(roi, axis=1)
+            # Mesma lógica para vertical (caso aconteça)
+            w = roi.shape[1]
+            center_x = w // 2
+            x_start = max(0, center_x - 1)
+            x_end = min(w, center_x + 2)
+            
+            core_roi = roi[:, x_start:x_end]
+            profile = np.mean(core_roi, axis=1)
         
-        # Suaviza o perfil com uma média móvel
-        profile = np.convolve(profile, np.ones(5)/5.0, mode='same')
+        # REDUZIR a suavização de 5 para 3!
+        # Assim não apagamos as ranhuras finas entre os segmentos.
+        profile = np.convolve(profile, np.ones(3)/3.0, mode='same')
         
         return profile
     
