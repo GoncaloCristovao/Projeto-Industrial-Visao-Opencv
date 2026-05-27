@@ -156,30 +156,57 @@ class VisionProcessor:
             
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             blur = cv2.GaussianBlur(gray, (5, 5), 0)
-            _, thresh = cv2.threshold(blur, self.threshold_value, 255, cv2.THRESH_BINARY)
             
-            # Deteção de linha para alinhamento
-            # Deteção de linha para alinhamento - Ajustado para tolerar guias segmentadas (linhas tracejadas)
-            lines = cv2.HoughLinesP(thresh, 1, np.pi/180, 40, minLineLength=100, maxLineGap=150)
-
-
-            # SE A MÁQUINA NÃO ENCONTRAR A LINHA, NÃO DÁ ERRO, APENAS TERMINA
-            if lines is None:
-                print("[DEBUG] Nenhuma linha detetada na imagem. Ajustar iluminação ou threshold.")
+            # CORREÇÃO 1: Usar THRESH_OTSU para calcular o brilho automaticamente em vez do estático "10"
+            _, thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+            
+            # Limpar o ruído dos rebordos (Morfologia)
+            kernel = np.ones((3,3), np.uint8)
+            thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+            
+            # CORREÇÃO 2: Encontrar o eixo central com contornos em vez de HoughLines
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            if not contours:
+                print("[DEBUG] Nenhuma guia detetada. Ajustar iluminação.")
                 return False, img, {"zonas": []}
             
-            best_line = max(lines, key=lambda l: np.hypot(l[0][2]-l[0][0], l[0][3]-l[0][1]))[0]
-            x1, y1, x2, y2 = best_line
+            # Assume que o maior contorno é a guia de luz
+            largest_contour = max(contours, key=cv2.contourArea)
+            
+            # Ajustar uma linha ao centro de massa do contorno (muito mais robusto e estável)
+            [vx, vy, x0, y0] = cv2.fitLine(largest_contour, cv2.DIST_L2, 0, 0.01, 0.01)
+            vx, vy = float(vx[0]), float(vy[0])
+            x0, y0 = float(x0[0]), float(y0[0])
+            
+            # Encontrar o comprimento projetando os pontos do contorno no vetor da linha
+            pts = largest_contour.reshape(-1, 2)
+            projections = (pts[:, 0] - x0) * vx + (pts[:, 1] - y0) * vy
+            t_min, t_max = np.min(projections), np.max(projections)
+            
+            # Calcular os pontos extremos absolutos do eixo central
+            x1 = x0 + t_min * vx
+            y1 = y0 + t_min * vy
+            x2 = x0 + t_max * vx
+            y2 = y0 + t_max * vy
+            
             dx, dy = x2 - x1, y2 - y1
             length = np.hypot(dx, dy)
-            ux, uy = dx/length, dy/length
-            px, py = -uy, ux
             
-            # Coordenadas do retângulo de inspeção
+            # Proteção contra divisão por zero
+            if length < 1e-5:
+                return False, img, {"zonas": []}
+                
+            ux, uy = dx/length, dy/length
+            px, py = -uy, ux  # Vetor perpendicular para espessura
+            
+            # Coordenadas do retângulo de inspeção (IGUAL AO TEU CÓDIGO ORIGINAL)
             p1 = (int(x1 + px*self.half_thickness), int(y1 + py*self.half_thickness))
             p2 = (int(x2 + px*self.half_thickness), int(y2 + py*self.half_thickness))
             p3 = (int(x2 - px*self.half_thickness), int(y2 - py*self.half_thickness))
             p4 = (int(x1 - px*self.half_thickness), int(y1 - py*self.half_thickness))
+            
+            # ... (O resto da tua LÓGICA DE FATIAMENTO ELÁSTICO mantém-se exatamente igual a partir daqui) ...
             
             # =================================================================
             # LÓGICA DE FATIAMENTO ELÁSTICO (SOLUÇÃO PARA >30 SEGMENTOS)
