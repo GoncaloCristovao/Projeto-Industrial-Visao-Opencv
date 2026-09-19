@@ -1,0 +1,13 @@
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\bin\Debug\HMI_PEA.exe.config
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\bin\Debug\HMI_PEA.exe
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\bin\Debug\HMI_PEA.pdb
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\bin\Debug\HMI_PEA.xml
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.vbproj.AssemblyReference.cache
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.Form1.resources
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.Resources.resources
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.vbproj.GenerateResource.cache
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.vbproj.CoreCompileInputs.cache
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.exe
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.xml
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.pdb
+C:\Users\ASUS\Desktop\Eng. Automacao Industrial\1º Ano\2º Semestre\II\Aula1\HMI_PEA\HMI_PEA\obj\Debug\HMI_PEA.exe.config

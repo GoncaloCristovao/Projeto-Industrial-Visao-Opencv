@@ -1,0 +1,13 @@
+C:\Users\hugof\source\repos\PLC2\PLC2\bin\Debug\PLC2.exe.config
+C:\Users\hugof\source\repos\PLC2\PLC2\bin\Debug\PLC2.exe
+C:\Users\hugof\source\repos\PLC2\PLC2\bin\Debug\PLC2.pdb
+C:\Users\hugof\source\repos\PLC2\PLC2\bin\Debug\PLC2.xml
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.vbproj.AssemblyReference.cache
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.Form1.resources
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.Resources.resources
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.vbproj.GenerateResource.cache
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.vbproj.CoreCompileInputs.cache
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.exe
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.xml
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.pdb
+C:\Users\hugof\source\repos\PLC2\PLC2\obj\Debug\PLC2.Form2.resources
